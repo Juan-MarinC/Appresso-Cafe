@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appresso Café Analyzer</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">Appresso Café</div>
+            <div class="badge">Complexity Dashboard</div>
+        </div>
+
+        <div class="grid">
+            <div class="panel hero-panel">
+                <div>
+                    <p class="eyebrow">Analyzer de pedidos</p>
+                    <h1>Estudio de complejidad computacional</h1>
+                    <p class="subtitle">
+                        Evalúa cómo se comportan los algoritmos cuando la cafetería incrementa el número de pedidos.
+                        El sistema mide búsqueda, suma, recursividad, crecimiento y predicción de ventas.
+                    </p>
+                </div>
+
+                <div class="floating-metrics">
+                    <div class="mini-stat">
+                        <span>Big O</span>
+                        <strong>O(n)</strong>
+                    </div>
+                    <div class="mini-stat">
+                        <span>Escala</span>
+                        <strong>10–25k</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel form-panel">
+                <form method="post" action="/run" enctype="multipart/form-data" class="analysis-form">
+                    <div class="field-group">
+                        <label for="size">Tamaño de la lista de pedidos</label>
+                        <select name="size" id="size">
+                            <option value="10">10</option>
+                            <option value="100">100</option>
+                            <option value="1000">1.000</option>
+                            <option value="5000">5.000</option>
+                            <option value="10000">10.000</option>
+                            <option value="25000">25.000</option>
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="file" class="upload-label">O sube un CSV con tus propios datos</label>
+                        <input type="file" name="file" id="file" accept=".csv" />
+                    </div>
+
+                    <button type="submit" class="primary-btn">Ejecutar análisis</button>
+                </form>
+            </div>
+
+            <div class="panel side-panel">
+                <h2>Resumen del proyecto</h2>
+                <ul>
+                    <li>Búsqueda lineal por identificador.</li>
+                    <li>Cálculo del total de productos procesados.</li>
+                    <li>Análisis recursivo de la estructura.</li>
+                    <li>Modelado de crecimiento por semanas.</li>
+                    <li>Predicción de ventas en 2,5 y 7 días.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
