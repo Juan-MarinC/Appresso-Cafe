@@ -6,7 +6,7 @@ Esta aplicación simula una cafetería digital y permite analizar el comportamie
 
 - complejidad computacional
 - notación Big O
-- progresiones geométricas
+- progresiones aritméticas
 - sumatorias
 - regresión lineal
 - recursividad (aplicada con control para evitar errores por profundidad)
@@ -20,9 +20,9 @@ La aplicación permite:
 1. Generar una lista de pedidos aleatoria.
 2. Buscar un pedido por su identificador.
 3. Sumar el total de cantidades de todos los productos.
-4. Analizar la estructura de los datos usando un enfoque recursivo/iterativo.
+4. Analizar la estructura de los datos usando un enfoque recursivo.
 5. Medir cuántas operaciones hacen cada algoritmo.
-6. Calcular cuánto tarda un cliente en llegar a cierto número de productos con crecimiento exponencial.
+6. Calcular cuánto tarda un cliente en llegar a cierto número de productos aumentando una cantidad fija cada semana.
 7. Predecir ventas futuras con regresión lineal.
 8. Mostrar todo en una interfaz web con resultados claros.
 
@@ -114,7 +114,7 @@ Los algoritmos principales tienen esta lógica:
 - Búsqueda lineal: O(n)
 - Suma de cantidades: O(n)
 - Análisis de recorrido: O(n)
-- Crecimiento exponencial: depende del factor de multiplicación y del objetivo
+- Progresión aritmética: crecimiento lineal con diferencia constante
 - Regresión lineal: se basa en una aproximación lineal sobre una serie de valores
 
 El proyecto busca mostrar que la eficiencia no depende solo del resultado, sino también del número de operaciones y del comportamiento cuando aumenta la entrada.

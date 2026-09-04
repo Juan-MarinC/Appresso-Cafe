@@ -35,7 +35,7 @@ El proyecto está dividido en módulos con fines claros:
 - `orders.py`: define la entidad `Order` y genera los pedidos.
 - `algorithms.py`: contiene la lógica principal del análisis.
 - `counter.py`: mide operaciones primitivas como comparaciones, sumas y llamadas.
-- `growth.py`: modela el crecimiento por duplicación semanal.
+- `growth.py`: modela el crecimiento mediante una progresión aritmética semanal.
 - `regression.py`: realiza predicción lineal usando NumPy.
 - `storage.py`: almacena datos en SQLite.
 - `app.py`: integra el sistema completo con FastAPI.
@@ -79,9 +79,9 @@ Esto es significativo porque demuestra que el sistema se comporta de manera pred
 
 ## 7. Modelo de crecimiento del cliente
 
-Otra parte del proyecto aplica una progresión geométrica donde el cliente duplica su compra cada semana. Este enfoque permite modelar un crecimiento acelerado y calcular cuántas semanas se requieren para alcanzar objetivos como 42, 72 y 120 productos.
+Otra parte del proyecto aplica una progresión aritmética donde el cliente aumenta su compra en una cantidad fija cada semana. Este enfoque permite modelar un crecimiento lineal y calcular cuántas semanas se requieren para alcanzar objetivos como 42, 72 y 120 productos.
 
-La lógica es útil para explicar conceptos de progresiones, crecimiento exponencial y análisis de tendencias. Además, hace visible la diferencia entre crecimiento lineal y crecimiento geométrico.
+La lógica es útil para explicar conceptos de progresiones, crecimiento lineal y análisis de tendencias. Además, permite relacionar la diferencia constante con el comportamiento aritmético observado.
 
 ## 8. Predicción de ventas
 

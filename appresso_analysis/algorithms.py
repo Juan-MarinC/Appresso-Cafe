@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Optional
 from .orders import Order
 from .counter import OperationCounter
 
 
-def find_order_linear(orders: List[Order], target_id: int, counter: OperationCounter) -> Order:
+def find_order_linear(orders: List[Order], target_id: int, counter: OperationCounter) -> Optional[Order]:
     """Linear search for an order by id. Counts each comparison as an operation."""
     for order in orders:
         counter.comparisons += 1
@@ -23,14 +23,22 @@ def total_products(orders: List[Order], counter: OperationCounter) -> int:
 
 
 def recursive_analyze(orders: List[Order], index: int, counter: OperationCounter) -> int:
-    """Iteratively sum product quantities.
-    This avoids Python recursion limits when the number of orders is large.
-    """
-    total = 0
-    while index < len(orders):
+    """Recursively sum quantities by dividing the input into smaller ranges."""
+    def analyze_range(start: int, end: int) -> int:
         counter.calls += 1
-        for qty in orders[index].quantities:
-            counter.additions += 1
-            total += qty
-        index += 1
-    return total
+        if start >= end:
+            return 0
+        if end - start == 1:
+            total = 0
+            for qty in orders[start].quantities:
+                counter.additions += 1
+                total += qty
+            return total
+
+        midpoint = start + (end - start) // 2
+        left_total = analyze_range(start, midpoint)
+        right_total = analyze_range(midpoint, end)
+        counter.additions += 1
+        return left_total + right_total
+
+    return analyze_range(index, len(orders))

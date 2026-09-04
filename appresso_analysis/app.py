@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 
 from appresso_analysis.algorithms import find_order_linear, recursive_analyze, total_products
 from appresso_analysis.counter import OperationCounter
-from appresso_analysis.growth import weeks_to_reach
+from appresso_analysis.growth import arithmetic_progression, weeks_to_reach
 from appresso_analysis.orders import Order, generate_orders
 from appresso_analysis.regression import predict_sales_numpy
 from appresso_analysis.storage import init_db, insert_orders
@@ -129,10 +129,13 @@ async def run_analysis(
         elapsed_seconds=elapsed_seconds,
     )
 
+    growth_start = 2
+    growth_difference = 2
     growth_weeks = {
-        target: weeks_to_reach(target, start=2, factor=2)
+        target: weeks_to_reach(target, start=growth_start, difference=growth_difference)
         for target in [42, 72, 120]
     }
+    progression = arithmetic_progression(growth_start, growth_difference, terms=5)
 
     daily_totals = [
         order.total_quantity() if isinstance(order, Order) else sum(order["quantities"])
@@ -160,6 +163,7 @@ async def run_analysis(
             "rec_calls": rec_calls,
             "rec_adds": rec_adds,
             "growth_weeks": growth_weeks,
+            "progression": progression,
             "pred_2_5": pred_2_5,
             "pred_7": pred_7,
             "data_source": data_source,

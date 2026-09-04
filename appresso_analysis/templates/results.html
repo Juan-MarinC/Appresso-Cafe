@@ -107,6 +107,7 @@
 
         <div class="panel">
             <h2>Fidelización por cliente</h2>
+            <p>Progresión aritmética: {{ progression|join(' -> ') }}</p>
             <ul class="growth-list">
                 <li><span>42 productos</span><strong>{{ growth_weeks.get(42, 'N/A') }} semanas</strong></li>
                 <li><span>72 productos</span><strong>{{ growth_weeks.get(72, 'N/A') }} semanas</strong></li>
