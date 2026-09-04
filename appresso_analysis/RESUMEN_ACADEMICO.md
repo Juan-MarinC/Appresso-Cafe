@@ -32,7 +32,7 @@ La aplicación permite:
 
 El proyecto está dividido en módulos con fines claros:
 
-- `orders.py`: define la entidad `Order` y genera los pedidos.
+- `orders.py`: define la entidad `Pedido` y genera los pedidos.
 - `algorithms.py`: contiene la lógica principal del análisis.
 - `counter.py`: mide operaciones primitivas como comparaciones, sumas y llamadas.
 - `growth.py`: modela el crecimiento mediante una progresión aritmética semanal.

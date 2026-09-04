@@ -1,44 +1,44 @@
 from typing import List, Optional
-from .orders import Order
-from .counter import OperationCounter
+from .orders import Pedido
+from .counter import ContadorOperaciones
 
 
-def find_order_linear(orders: List[Order], target_id: int, counter: OperationCounter) -> Optional[Order]:
-    """Linear search for an order by id. Counts each comparison as an operation."""
-    for order in orders:
-        counter.comparisons += 1
-        if order.order_id == target_id:
-            return order
+def buscar_pedido_lineal(pedidos: List[Pedido], id_objetivo: int, contador: ContadorOperaciones) -> Optional[Pedido]:
+    """Busca un pedido por ID y cuenta cada comparación realizada."""
+    for pedido in pedidos:
+        contador.comparaciones += 1
+        if pedido.id_pedido == id_objetivo:
+            return pedido
     return None
 
 
-def total_products(orders: List[Order], counter: OperationCounter) -> int:
-    """Sum total quantity of all products across orders. Counts each addition as operation."""
+def sumar_productos(pedidos: List[Pedido], contador: ContadorOperaciones) -> int:
+    """Suma las cantidades de todos los productos y cuenta las sumas."""
     total = 0
-    for order in orders:
-        for qty in order.quantities:
-            counter.additions += 1
-            total += qty
+    for pedido in pedidos:
+        for cantidad in pedido.cantidades:
+            contador.sumas += 1
+            total += cantidad
     return total
 
 
-def recursive_analyze(orders: List[Order], index: int, counter: OperationCounter) -> int:
-    """Recursively sum quantities by dividing the input into smaller ranges."""
-    def analyze_range(start: int, end: int) -> int:
-        counter.calls += 1
-        if start >= end:
+def analizar_recursivamente(pedidos: List[Pedido], indice: int, contador: ContadorOperaciones) -> int:
+    """Suma cantidades recursivamente dividiendo la entrada en rangos pequeños."""
+    def analizar_rango(inicio: int, fin: int) -> int:
+        contador.llamadas += 1
+        if inicio >= fin:
             return 0
-        if end - start == 1:
+        if fin - inicio == 1:
             total = 0
-            for qty in orders[start].quantities:
-                counter.additions += 1
-                total += qty
+            for cantidad in pedidos[inicio].cantidades:
+                contador.sumas += 1
+                total += cantidad
             return total
 
-        midpoint = start + (end - start) // 2
-        left_total = analyze_range(start, midpoint)
-        right_total = analyze_range(midpoint, end)
-        counter.additions += 1
-        return left_total + right_total
+        mitad = inicio + (fin - inicio) // 2
+        total_izquierdo = analizar_rango(inicio, mitad)
+        total_derecho = analizar_rango(mitad, fin)
+        contador.sumas += 1
+        return total_izquierdo + total_derecho
 
-    return analyze_range(index, len(orders))
+    return analizar_rango(indice, len(pedidos))

@@ -29,7 +29,7 @@ La aplicación permite:
 ## Estructura del proyecto
 
 - `app.py`: punto principal de la aplicación FastAPI.
-- `orders.py`: definición del modelo `Order` y generación de datos sintéticos.
+- `orders.py`: definición del modelo `Pedido` y generación de datos sintéticos.
 - `algorithms.py`: lógica de búsqueda, suma y análisis.
 - `counter.py`: conteo de operaciones para justificar la complejidad.
 - `growth.py`: cálculo de semanas necesarias para alcanzar una meta.

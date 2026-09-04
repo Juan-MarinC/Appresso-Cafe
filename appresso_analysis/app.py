@@ -9,12 +9,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from appresso_analysis.algorithms import find_order_linear, recursive_analyze, total_products
-from appresso_analysis.counter import OperationCounter
-from appresso_analysis.growth import arithmetic_progression, weeks_to_reach
-from appresso_analysis.orders import Order, generate_orders
-from appresso_analysis.regression import predict_sales_numpy
-from appresso_analysis.storage import init_db, insert_orders
+from appresso_analysis.algorithms import analizar_recursivamente, buscar_pedido_lineal, sumar_productos
+from appresso_analysis.counter import ContadorOperaciones
+from appresso_analysis.growth import progresion_aritmetica, semanas_para_alcanzar
+from appresso_analysis.orders import Pedido, generar_pedidos
+from appresso_analysis.regression import predecir_ventas_numpy
+from appresso_analysis.storage import inicializar_bd, insertar_pedidos
 
 app = FastAPI()
 
@@ -23,62 +23,62 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 
-def build_execution_summary(size: int, find_ops: int, total_ops: int, rec_calls: int, elapsed_seconds: float) -> dict:
-    """Build a human-readable summary of the execution metrics for one analysis run."""
-    processed_operations = find_ops + total_ops + rec_calls
-    elapsed_ms = elapsed_seconds * 1000
+def resumen_ejecucion(tamano: int, operaciones_busqueda: int, operaciones_totales: int, llamadas_recursivas: int, segundos_transcurridos: float) -> dict:
+    """Construye un resumen legible de las métricas de una ejecución."""
+    operaciones_procesadas = operaciones_busqueda + operaciones_totales + llamadas_recursivas
+    milisegundos_transcurridos = segundos_transcurridos * 1000
     return {
-        "size": size,
-        "find_ops": find_ops,
-        "total_ops": total_ops,
-        "rec_calls": rec_calls,
-        "processed_operations": processed_operations,
-        "elapsed_seconds": elapsed_seconds,
-        "elapsed_ms": elapsed_ms,
+        "size": tamano,
+        "find_ops": operaciones_busqueda,
+        "total_ops": operaciones_totales,
+        "rec_calls": llamadas_recursivas,
+        "processed_operations": operaciones_procesadas,
+        "elapsed_seconds": segundos_transcurridos,
+        "elapsed_ms": milisegundos_transcurridos,
         "message": (
-            f"Tiempo real: se ejecutaron {processed_operations} operaciones sobre {size} pedidos "
-            f"y el análisis tardó {elapsed_seconds:.6f} s ({elapsed_ms:.2f} ms)."
+            f"Tiempo real: se ejecutaron {operaciones_procesadas} operaciones sobre {tamano} pedidos "
+            f"y el análisis tardó {segundos_transcurridos:.6f} s ({milisegundos_transcurridos:.2f} ms)."
         ),
     }
 
 
-def parse_csv_orders(file_obj) -> list[Order]:
-    text = file_obj.read().decode("utf-8")
-    reader = csv.DictReader(StringIO(text))
-    grouped = {}
+def parsear_pedidos_csv(archivo) -> list[Pedido]:
+    texto = archivo.read().decode("utf-8")
+    lector = csv.DictReader(StringIO(texto))
+    agrupados = {}
 
-    for row in reader:
-        order_id = int(row.get("order_id") or 0)
-        if not order_id:
+    for fila in lector:
+        id_pedido = int(fila.get("order_id") or 0)
+        if not id_pedido:
             continue
 
-        payload = grouped.setdefault(
-            order_id,
-            {"client": row.get("client", "Cliente"), "products": [], "quantities": [], "status": row.get("status", "Solicitado")},
+        datos = agrupados.setdefault(
+            id_pedido,
+            {"cliente": fila.get("client", "Cliente"), "productos": [], "cantidades": [], "estado": fila.get("status", "Solicitado")},
         )
-        product = row.get("product") or row.get("producto")
-        qty = row.get("quantity") or row.get("cantidad")
-        if product and qty:
-            payload["products"].append(product)
-            payload["quantities"].append(int(qty))
+        producto = fila.get("product") or fila.get("producto")
+        cantidad = fila.get("quantity") or fila.get("cantidad")
+        if producto and cantidad:
+            datos["productos"].append(producto)
+            datos["cantidades"].append(int(cantidad))
 
-    orders = []
-    for order_id, data in sorted(grouped.items()):
-        orders.append(
-            Order(
-                order_id=order_id,
-                client=data["client"],
-                products=data["products"],
-                quantities=data["quantities"],
-                status=data["status"],
+    pedidos = []
+    for id_pedido, datos in sorted(agrupados.items()):
+        pedidos.append(
+            Pedido(
+                id_pedido=id_pedido,
+                cliente=datos["cliente"],
+                productos=datos["productos"],
+                cantidades=datos["cantidades"],
+                estado=datos["estado"],
             )
         )
-    return orders
+    return pedidos
 
 
 @app.on_event("startup")
 async def startup_event():
-    init_db()
+    inicializar_bd()
 
 
 @app.get("/")
@@ -96,54 +96,54 @@ async def run_analysis(
     data_source = "synthetic"
 
     if file is not None and file.filename:
-        orders = parse_csv_orders(file.file)
+        orders = parsear_pedidos_csv(file.file)
         data_source = "csv"
     else:
         if size is None:
             size = 100
-        orders = generate_orders(size)
+        orders = generar_pedidos(size)
 
-    insert_orders(orders)
+    insertar_pedidos(orders)
 
     start_time = time.perf_counter()
-    counter = OperationCounter()
-    target_id = orders[0].order_id if orders else 0
-    find_order_linear(orders, target_id, counter)
-    find_ops = counter.comparisons
+    contador = ContadorOperaciones()
+    id_objetivo = orders[0].id_pedido if orders else 0
+    buscar_pedido_lineal(orders, id_objetivo, contador)
+    find_ops = contador.comparaciones
 
-    counter.reset()
-    total_products(orders, counter)
-    total_ops = counter.additions
+    contador.reiniciar()
+    sumar_productos(orders, contador)
+    total_ops = contador.sumas
 
-    counter.reset()
-    recursive_analyze(orders, 0, counter)
-    rec_calls = counter.calls
-    rec_adds = counter.additions
+    contador.reiniciar()
+    analizar_recursivamente(orders, 0, contador)
+    rec_calls = contador.llamadas
+    rec_adds = contador.sumas
     elapsed_seconds = time.perf_counter() - start_time
 
-    execution_summary = build_execution_summary(
-        size=len(orders),
-        find_ops=find_ops,
-        total_ops=total_ops,
-        rec_calls=rec_calls,
-        elapsed_seconds=elapsed_seconds,
+    execution_summary = resumen_ejecucion(
+        tamano=len(orders),
+        operaciones_busqueda=find_ops,
+        operaciones_totales=total_ops,
+        llamadas_recursivas=rec_calls,
+        segundos_transcurridos=elapsed_seconds,
     )
 
     growth_start = 2
     growth_difference = 2
     growth_weeks = {
-        target: weeks_to_reach(target, start=growth_start, difference=growth_difference)
+        target: semanas_para_alcanzar(target, inicio=growth_start, diferencia=growth_difference)
         for target in [42, 72, 120]
     }
-    progression = arithmetic_progression(growth_start, growth_difference, terms=5)
+    progression = progresion_aritmetica(growth_start, growth_difference, terminos=5)
 
     daily_totals = [
-        order.total_quantity() if isinstance(order, Order) else sum(order["quantities"])
+        order.cantidad_total() if isinstance(order, Pedido) else sum(order["cantidades"])
         for order in orders
     ]
 
-    pred_2_5 = predict_sales_numpy(daily_totals, days_ahead=2.5)
-    pred_7 = predict_sales_numpy(daily_totals, days_ahead=7)
+    pred_2_5 = predecir_ventas_numpy(daily_totals, dias_adelante=2.5)
+    pred_7 = predecir_ventas_numpy(daily_totals, dias_adelante=7)
 
     output_size = len(orders)
     out_path = Path("operation_counts.csv")

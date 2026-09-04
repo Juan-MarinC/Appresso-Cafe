@@ -3,13 +3,13 @@ import json
 from pathlib import Path
 from typing import List
 
-from .orders import Order
+from .orders import Pedido
 
-# SQLite database file located next to this module
+# Archivo de base de datos SQLite junto a este módulo
 DB_PATH = Path(__file__).with_name('appresso.db')
 
-def init_db() -> None:
-    """Create the orders table if it does not exist."""
+def inicializar_bd() -> None:
+    """Crea la tabla de pedidos si todavía no existe."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute('''
@@ -24,46 +24,44 @@ def init_db() -> None:
     conn.commit()
     conn.close()
 
-def insert_orders(orders: List[Order]) -> None:
-    """Insert a list of :class:`Order` objects into the database.
-    Existing rows with the same ``order_id`` are replaced.
-    """
+def insertar_pedidos(pedidos: List[Pedido]) -> None:
+    """Guarda pedidos en la base de datos y reemplaza IDs repetidos."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    for order in orders:
+    for pedido in pedidos:
         cur.execute(
             '''
             INSERT OR REPLACE INTO orders (order_id, client, products, quantities, status)
             VALUES (?, ?, ?, ?, ?)
             ''',
             (
-                order.order_id,
-                order.client,
-                json.dumps(order.products),
-                json.dumps(order.quantities),
-                order.status,
+                pedido.id_pedido,
+                pedido.cliente,
+                json.dumps(pedido.productos),
+                json.dumps(pedido.cantidades),
+                pedido.estado,
             ),
         )
     conn.commit()
     conn.close()
 
-def get_all_orders() -> List[Order]:
-    """Return all orders from the database as ``Order`` instances."""
+def obtener_pedidos() -> List[Pedido]:
+    """Devuelve todos los pedidos como objetos ``Pedido``."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute('SELECT order_id, client, products, quantities, status FROM orders')
     rows = cur.fetchall()
     conn.close()
-    orders: List[Order] = []
+    pedidos: List[Pedido] = []
     for row in rows:
         order_id, client, products_json, quantities_json, status = row
-        orders.append(
-            Order(
-                order_id=order_id,
-                client=client,
-                products=json.loads(products_json),
-                quantities=json.loads(quantities_json),
-                status=status,
+        pedidos.append(
+            Pedido(
+                id_pedido=order_id,
+                cliente=client,
+                productos=json.loads(products_json),
+                cantidades=json.loads(quantities_json),
+                estado=status,
             )
         )
-    return orders
+    return pedidos

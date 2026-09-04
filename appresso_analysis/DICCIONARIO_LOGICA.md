@@ -17,7 +17,7 @@ Es la capa principal de la aplicación web. Aquí se conectan los datos, los alg
 - devuelve el dashboard con resultados
 
 ### Lógica clave
-- `parse_csv_orders()`: convierte filas de CSV en objetos `Order`
+- `parsear_pedidos_csv()`: convierte filas de CSV en objetos `Pedido`
 - `run_analysis()`: eje principal del procesamiento
 - `download_file()`: permite descargar el CSV generado
 
@@ -27,13 +27,13 @@ Es la capa principal de la aplicación web. Aquí se conectan los datos, los alg
 Representa los pedidos que se usan en el análisis.
 
 ### Qué hace
-- define la clase `Order`
+- define la clase `Pedido`
 - calcula el total de productos por pedido
 - genera listas de pedidos aleatorias con clientes, productos y cantidades
 
 ### Lógica clave
-- `Order.total_quantity()`: suma todas las cantidades del pedido
-- `generate_orders()`: genera `n` órdenes simuladas
+- `Pedido.cantidad_total()`: suma todas las cantidades del pedido
+- `generar_pedidos()`: genera `n` órdenes simuladas
 
 ## 3. `algorithms.py`
 
@@ -46,9 +46,9 @@ Contiene los algoritmos principales del proyecto.
 - recorre la lista mediante recursividad para contar trabajo realizado
 
 ### Lógica clave
-- `find_order_linear()`: búsqueda lineal, compara uno a uno
-- `total_products()`: suma todas las cantidades
-- `recursive_analyze()`: divide la lista y suma sus mitades mediante recursividad real
+- `buscar_pedido_lineal()`: búsqueda lineal, compara uno a uno
+- `sumar_productos()`: suma todas las cantidades
+- `analizar_recursivamente()`: divide la lista y suma sus mitades mediante recursividad real
 
 ## 4. `counter.py`
 
@@ -61,8 +61,8 @@ Permite documentar el costo computacional de cada algoritmo.
 - cuenta llamadas
 
 ### Lógica clave
-- `OperationCounter.__init__()`: inicializa contadores
-- `reset()`: limpia los contadores para otra prueba
+- `ContadorOperaciones.__init__()`: inicializa contadores
+- `reiniciar()`: limpia los contadores para otra prueba
 
 ## 5. `growth.py`
 
@@ -89,7 +89,7 @@ Predice valores futuros a partir de datos históricos.
 - estima el valor futuro en `n` días
 
 ### Lógica clave
-- `predict_sales_numpy()`: usa regresión lineal simple con `np.polyfit`
+- `predecir_ventas_numpy()`: usa regresión lineal simple con `np.polyfit`
 
 ## 7. `storage.py`
 
@@ -102,9 +102,9 @@ Guarda los pedidos en SQLite.
 - recupera órdenes desde la BD
 
 ### Lógica clave
-- `init_db()`: crea la tabla `orders`
-- `insert_orders()`: guarda las órdenes
-- `get_all_orders()`: devuelve los registros como objetos `Order`
+- `inicializar_bd()`: crea la tabla `orders`
+- `insertar_pedidos()`: guarda los pedidos
+- `obtener_pedidos()`: devuelve los registros como objetos `Pedido`
 
 ## 8. `templates/index.html`
 
@@ -167,11 +167,11 @@ La suma de cantidades recorre todos los productos de todos los pedidos, por lo q
 
 El análisis recursivo divide la lista en dos partes hasta llegar a pedidos individuales. El trabajo total es `O(n)` y la profundidad de la recursividad es `O(log n)`. Por eso puede procesar 25.000 pedidos sin superar el límite de llamadas de Python.
 
-El objeto `OperationCounter` permite relacionar la explicación teórica con datos observables: comparaciones, sumas y llamadas recursivas.
+El objeto `ContadorOperaciones` permite relacionar la explicación teórica con datos observables: comparaciones, sumas y llamadas recursivas.
 
 ### Recursividad
 
-`recursive_analyze()` utiliza el caso base cuando el rango está vacío o contiene un solo pedido. En los demás casos divide el rango en dos, analiza cada mitad y combina los resultados.
+`analizar_recursivamente()` utiliza el caso base cuando el rango está vacío o contiene un solo pedido. En los demás casos divide el rango en dos, analiza cada mitad y combina los resultados.
 
 La idea que se puede explicar es:
 
@@ -197,7 +197,7 @@ Resultados actuales:
 
 ### Regresión lineal
 
-`predict_sales_numpy()` recibe una serie de ventas, asigna una posición a cada dato y ajusta una recta mediante `np.polyfit`. Después usa esa recta para estimar ventas a 2.5 y 7 días.
+`predecir_ventas_numpy()` recibe una serie de ventas, asigna una posición a cada dato y ajusta una recta mediante `np.polyfit`. Después usa esa recta para estimar ventas a 2.5 y 7 días.
 
 La regresión no adivina un valor exacto: calcula una tendencia aproximada basada en los datos disponibles.
 
@@ -219,7 +219,7 @@ Orden recomendado para la demostración:
 2. Ejecutar el análisis con 10 pedidos y explicar los contadores.
 3. Ejecutar el análisis con 25.000 pedidos y comparar el tiempo y las operaciones.
 4. Explicar que búsqueda, suma y análisis tienen comportamiento `O(n)`.
-5. Mostrar `recursive_analyze()` y explicar el caso base y la división en mitades.
+5. Mostrar `analizar_recursivamente()` y explicar el caso base y la división en mitades.
 6. Mostrar la progresión `2, 4, 6, 8, 10` y los objetivos semanales.
 7. Mostrar las predicciones de regresión lineal para 2.5 y 7 días.
 
