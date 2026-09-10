@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedido confirmado - Appresso Food</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">Appresso <span>Food</span></div>
+            <div class="badge">Pedido #{{ order.order_id }}</div>
+        </div>
+
+        <div class="navbar">
+            <a href="/">Pedir</a>
+            <a href="/cocina">Cocina</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/laboratorio">Laboratorio de complejidad</a>
+        </div>
+
+        {% for w in warnings %}
+        <div class="warning-banner">Alerta de inventario: {{ w }}</div>
+        {% endfor %}
+
+        <div class="panel">
+            <p class="eyebrow">Confirmación</p>
+            <h1>¡Gracias, {{ order.client }}!</h1>
+            <p class="subtitle">
+                Tu pedido quedó registrado como <strong>{{ order.status }}</strong> por el canal
+                <strong>{{ 'domicilio' if order.channel == 'domicilio' else 'local' }}</strong>.
+            </p>
+
+            <table>
+                <tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr>
+                {% for item in order.items %}
+                <tr><td>{{ item.product_name }}</td><td>{{ item.quantity }}</td><td>${{ "{:,.0f}".format(item.subtotal) }}</td></tr>
+                {% endfor %}
+                <tr><td colspan="2"><strong>Total</strong></td><td><strong>${{ "{:,.0f}".format(order.total) }}</strong></td></tr>
+            </table>
+
+            {% if order.channel == 'domicilio' %}
+            <div class="route-info">
+                <h3>Ruta calculada con Dijkstra</h3>
+                <p class="route-path">{{ order.route | join(' &rarr; ') | safe }}</p>
+                <p>Distancia: <strong>{{ "%.1f"|format(order.distance_km) }} km</strong> &middot; Tiempo estimado: <strong>{{ "%.0f"|format(order.eta_minutes) }} min</strong></p>
+                <p class="subtitle">El pedido entró al heap de despacho: entre más cerca esté el barrio, antes sale del restaurante.</p>
+            </div>
+            {% endif %}
+
+            <div class="actions">
+                <a class="button" href="/">Hacer otro pedido</a>
+                <a class="button secondary" href="/cocina">Ver cocina</a>
+                <a class="button secondary" href="/clientes/{{ order.client }}">Historial de {{ order.client }}</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

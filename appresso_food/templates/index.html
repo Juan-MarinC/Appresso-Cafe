@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appresso Food</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">Appresso <span>Food</span></div>
+            <div class="badge">Comida rápida &middot; local &amp; domicilios</div>
+        </div>
+
+        <div class="navbar">
+            <a href="/" class="active">Pedir</a>
+            <a href="/cocina">Cocina</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/laboratorio">Laboratorio de complejidad</a>
+        </div>
+
+        {% if error %}
+        <div class="error-banner">{{ error }}</div>
+        {% endif %}
+
+        <div class="grid">
+            <div class="panel">
+                <p class="eyebrow">Nuevo pedido</p>
+                <h1>¿Qué se le antoja hoy?</h1>
+                <p class="subtitle">Elige del menú, indica el canal (mostrador o domicilio) y confirma. Si es domicilio, calculamos la ruta más corta con el grafo de barrios.</p>
+
+                <form method="post" action="/pedidos" id="order-form">
+                    <div class="field-group">
+                        <label for="client">Nombre del cliente</label>
+                        <input type="text" id="client" name="client" placeholder="Ej: Belén Castilla" required />
+                    </div>
+
+                    <div class="field-group">
+                        <label>Canal de venta</label>
+                        <div class="channel-toggle">
+                            <label><input type="radio" name="channel" value="local" checked onchange="toggleNeighborhood()" /> Local (mostrador)</label>
+                            <label><input type="radio" name="channel" value="domicilio" onchange="toggleNeighborhood()" /> Domicilio</label>
+                        </div>
+                    </div>
+
+                    <div class="field-group" id="neighborhood-field" style="display:none;">
+                        <label for="neighborhood">Barrio de entrega</label>
+                        <select name="neighborhood" id="neighborhood">
+                            {% for n in neighborhoods %}
+                            <option value="{{ n }}">{{ n }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field-group">
+                        <label for="served_by">Atendido por (cajero/a)</label>
+                        <input type="text" id="served_by" name="served_by" placeholder="Tu nombre" value="{{ served_by }}" />
+                    </div>
+
+                    <h3>Menú</h3>
+                    <div class="menu-grid">
+                        {% for p in products %}
+                        <div class="menu-card">
+                            {% if p.name in popular_product_names %}<span class="popular-badge">Popular</span>{% endif %}
+                            <div class="category">{{ p.category }}</div>
+                            <div class="name">{{ p.name }}</div>
+                            <div class="price">${{ "{:,.0f}".format(p.price) }}</div>
+                            <input type="hidden" name="product_id" value="{{ p.id }}" />
+                            <input type="number" name="quantity" min="0" value="0" />
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="primary-btn">Confirmar pedido</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel side-panel">
+                <h2>Lo más pedido</h2>
+                <p class="subtitle">Guíate por lo que más piden otros clientes.</p>
+                <ul>
+                    {% for name, qty in top_products %}
+                    <li class="ranking-item"><span><span class="rank">#{{ loop.index }}</span>{{ name }}</span><strong>{{ qty }} und.</strong></li>
+                    {% else %}
+                    <li class="ranking-item">Aún no hay pedidos registrados.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleNeighborhood() {
+            const domicilio = document.querySelector('input[name="channel"][value="domicilio"]').checked;
+            document.getElementById('neighborhood-field').style.display = domicilio ? 'grid' : 'none';
+        }
+    </script>
+</body>
+</html>
