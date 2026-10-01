@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from appresso_food import ranking, runtime, storage
+from appresso_food import fraud_routes, ranking, runtime, storage
 from appresso_food.algorithms import find_order_linear, recursive_total_units, total_units_sold
 from appresso_food.counter import OperationCounter
 from appresso_food.demo_data import generate_demo_orders
@@ -23,6 +23,7 @@ app = FastAPI(title="Appresso Food")
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.include_router(fraud_routes.router)
 
 SERVED_BY_COOKIE = "appresso_served_by"
 
@@ -31,6 +32,7 @@ SERVED_BY_COOKIE = "appresso_served_by"
 async def startup_event():
     storage.init_db()
     runtime.init_runtime()
+    fraud_routes.init_fraud()  # si MongoDB no está disponible, el resto de la app sigue funcionando
 
 
 def _common_context(request: Request) -> dict:

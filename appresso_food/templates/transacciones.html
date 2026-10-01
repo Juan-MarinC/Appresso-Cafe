@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Transacciones - Appresso Food</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/antifraude.css" />
+</head>
+<body>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">Appresso <span>Food</span></div>
+            <div class="badge">Registro de transacciones &middot; detección de anomalías</div>
+        </div>
+
+        <div class="navbar">
+            <a href="/">Pedir</a>
+            <a href="/cocina">Cocina</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/transacciones" class="active">Transacciones</a>
+            <a href="/antifraude">Antifraude</a>
+            <a href="/laboratorio">Laboratorio de complejidad</a>
+        </div>
+
+        {% if not mongo_ok %}
+        <div class="banner bad">MongoDB no está disponible, por eso no se pueden registrar transacciones. {{ mongo_error }}</div>
+        {% endif %}
+        {% if default_secret %}
+        <div class="banner warn">Se usa la llave HMAC de desarrollo. Defina APPRESSO_HMAC_SECRET en producción.</div>
+        {% endif %}
+
+        <script id="cfg" type="application/json">{{ config|tojson }}</script>
+
+        <div class="cols-main fx">
+            <div class="stack">
+                <div class="panel">
+                    <p class="eyebrow">Nueva transacción</p>
+                    <h1>Enviar una compra</h1>
+                    <p class="subtitle">
+                        Regla principal: <strong>{{ config.max_transactions }} o más transacciones del mismo usuario dentro de
+                        {{ "%g"|format(config.window_seconds) }} segundos</strong> se marcan como posible fraude.
+                        Cada usuario (correo) tiene su propia ventana deslizante.
+                    </p>
+
+                    <form id="txn-form" novalidate style="margin-top: 18px;">
+                        <div class="row">
+                            <div class="field-group">
+                                <label for="f-id">ID de transacción</label>
+                                <div class="inline">
+                                    <input type="text" id="f-id" autocomplete="off" />
+                                    <button type="button" class="btn" id="btn-newid" title="Generar un ID nuevo">Nuevo</button>
+                                </div>
+                                <div class="field-error" data-err="idTxn"></div>
+                            </div>
+                            <div class="field-group">
+                                <label for="f-user">Correo electrónico (identifica al usuario)</label>
+                                <input type="text" id="f-user" autocomplete="off" />
+                                <div class="field-error" data-err="user"></div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="field-group">
+                                <label for="f-nombre">Nombre del cliente</label>
+                                <input type="text" id="f-nombre" autocomplete="off" />
+                                <div class="field-error" data-err="nombre"></div>
+                            </div>
+                            <div class="field-group">
+                                <label for="f-cedula">Cédula</label>
+                                <input type="text" id="f-cedula" inputmode="numeric" autocomplete="off" />
+                                <div class="field-error" data-err="cedula"></div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="field-group" style="grid-column: 1 / -1;">
+                                <label for="f-date">Fecha y hora</label>
+                                <div class="inline">
+                                    <input type="text" id="f-date" autocomplete="off" />
+                                    <button type="button" class="btn" id="btn-now" title="Usar la hora actual">Ahora</button>
+                                </div>
+                                <label class="check" style="margin-top:6px;"><input type="checkbox" id="f-autodate" checked /> Usar la hora actual al enviar</label>
+                                <div class="field-error" data-err="date"></div>
+                            </div>
+                            <div class="field-group">
+                                <label for="f-value">Valor (COP)</label>
+                                <input type="text" id="f-value" inputmode="decimal" autocomplete="off" />
+                                <div class="field-error" data-err="value"></div>
+                            </div>
+                            <div class="field-group">
+                                <label for="f-method">Método de pago</label>
+                                <select id="f-method">
+                                    {% for m in config.payment_methods %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+                                </select>
+                                <div class="field-error" data-err="paymentMethod"></div>
+                            </div>
+                        </div>
+
+                        <div class="field-group">
+                            <label for="f-hash">Hash HMAC-SHA256 (opcional)</label>
+                            <div class="inline">
+                                <input type="text" id="f-hash" autocomplete="off" placeholder="Vacío: el servidor lo calcula y lo guarda" />
+                                {% if hash_helper %}<button type="button" class="btn" id="btn-hash" title="Pide al servidor el hash de estos datos">Calcular</button>{% endif %}
+                            </div>
+                            <div class="hint">Si lo envía, el servidor lo recalcula y rechaza la transacción si no coincide (los datos fueron modificados).</div>
+                            <div class="hint" id="hash-note"></div>
+                            <div class="field-error" data-err="hash"></div>
+                        </div>
+
+                        <label class="check"><input type="checkbox" id="f-novalidate" /> Modo prueba: enviar aunque el navegador detecte errores (para ver cómo responde el backend)</label>
+
+                        <div class="btn-row">
+                            <button type="submit" class="btn primary" id="btn-send">Enviar transacción</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <h2>Ráfaga (simula un bot)</h2>
+                    <p class="subtitle">Envía varias transacciones seguidas del usuario de arriba, con IDs nuevos y la hora actual, para ver la ventana llenarse.</p>
+                    <div class="row3" style="margin-top: 12px;">
+                        <div class="field-group"><label for="b-count">Cantidad</label><input type="number" id="b-count" value="4" min="1" max="30" /></div>
+                        <div class="field-group"><label for="b-delay">Pausa entre envíos (ms)</label><input type="number" id="b-delay" value="400" min="0" max="5000" step="50" /></div>
+                        <div class="field-group"><label>&nbsp;</label><button type="button" class="btn primary" id="btn-burst">Lanzar ráfaga</button></div>
+                    </div>
+                    <div id="burst-log"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>JSON crudo y casos de prueba</h2>
+                    <p class="subtitle">Pruebe el endpoint <code>POST /api/transactions</code> con cualquier cuerpo, incluso JSON mal formado.</p>
+                    <div class="inline" style="margin: 12px 0;">
+                        <select id="preset"></select>
+                        <button type="button" class="btn" id="btn-preset">Cargar caso</button>
+                        <button type="button" class="btn" id="btn-form2json">Usar datos del formulario</button>
+                    </div>
+                    <textarea id="raw" spellcheck="false"></textarea>
+                    <div class="btn-row"><button type="button" class="btn primary" id="btn-raw">Enviar JSON tal cual</button></div>
+                </div>
+            </div>
+
+            <div class="stack">
+                <div class="panel">
+                    <h2>Resultado</h2>
+                    <div id="result"><div class="empty">Envíe una transacción para ver el resultado, el hash y el estado de la ventana deslizante.</div></div>
+                </div>
+                <div class="panel">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <h2 style="margin:0;">Últimas transacciones</h2>
+                        <a class="btn small" href="/antifraude" style="text-decoration:none;">Abrir dashboard &rarr;</a>
+                    </div>
+                    <div class="tscroll"><table class="tight" id="recent"><tr><td class="empty">Cargando…</td></tr></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/fraud-common.js"></script>
+    <script src="/static/transacciones.js"></script>
+</body>
+</html>

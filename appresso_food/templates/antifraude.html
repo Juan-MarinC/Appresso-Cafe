@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Antifraude - Appresso Food</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/antifraude.css" />
+</head>
+<body>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">Appresso <span>Food</span></div>
+            <div class="badge">Dashboard antifraude</div>
+        </div>
+
+        <div class="navbar">
+            <a href="/">Pedir</a>
+            <a href="/cocina">Cocina</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/transacciones">Transacciones</a>
+            <a href="/antifraude" class="active">Antifraude</a>
+            <a href="/laboratorio">Laboratorio de complejidad</a>
+        </div>
+
+        {% if not mongo_ok %}
+        <div class="banner bad">MongoDB no está disponible, por eso no hay datos para mostrar. {{ mongo_error }}</div>
+        {% endif %}
+
+        <script id="cfg" type="application/json">{{ config|tojson }}</script>
+
+        <div class="stack">
+            <div class="big-three" id="big3"></div>
+
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+                    <h2 style="margin:0;">Resumen</h2>
+                    <div class="tabs" id="tabs">
+                        <button data-p="hoy" class="on">Hoy</button>
+                        <button data-p="semana">Esta semana</button>
+                        <button data-p="mes">Este mes</button>
+                    </div>
+                </div>
+                <div class="kpis" id="kpis"></div>
+            </div>
+
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <h2 style="margin:0;">Ventana deslizante actual</h2>
+                    <span class="live">en vivo</span>
+                </div>
+                <p class="subtitle" style="margin:6px 0 14px;">
+                    Ventana de <strong>{{ "%g"|format(config.window_seconds) }} s</strong> por usuario. Con cada transacción nueva <em>entra</em> a la ventana
+                    y <em>salen</em> las que superan los {{ "%g"|format(config.window_seconds) }} s; si quedan
+                    <strong>{{ config.max_transactions }} o más</strong> es una anomalía. Lo que sale de la ventana no se pierde: queda en el historial y en los logs.
+                </p>
+                <div id="window"><div class="empty">Cargando…</div></div>
+                <h4 style="margin:16px 0 4px; color:var(--primary-dark);">Últimas entradas y salidas</h4>
+                <div id="winevents"></div>
+            </div>
+
+            <div class="cols-2">
+                <div class="panel">
+                    <h2>Evolución temporal (14 días)</h2>
+                    <div id="evo"></div>
+                </div>
+                <div class="panel">
+                    <h2>Distribución por hora</h2>
+                    <p class="subtitle" style="margin-bottom:10px;">La intensidad indica la cantidad de anomalías (este mes).</p>
+                    <div class="heat" id="heat"></div>
+                    <div id="peaks" class="muted" style="margin-top:10px; font-size:13px;"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <h2 style="margin:0;">Anomalías</h2>
+                    <select id="anom-filter" style="width:auto; padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+                        <option value="">Todos los estados</option>
+                        {% for s in anomaly_states %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="tscroll"><table class="tight" id="anoms"></table></div>
+                <div class="btn-row"><button class="btn small" id="anom-more" hidden>Ver más</button></div>
+                <div id="timeline" style="margin-top:14px;"></div>
+            </div>
+
+            <div class="cols-3">
+                <div class="panel"><h2>Anomalías por nivel</h2><div id="levels"></div><h3 style="margin-top:18px;">Por tipo</h3><div id="types"></div></div>
+                <div class="panel"><h2>Métodos de pago</h2><div id="payments"></div></div>
+                <div class="panel"><h2>Tendencias</h2><div id="trends"></div></div>
+            </div>
+
+            <div class="cols-3">
+                <div class="panel"><h2>Casos más recurrentes</h2><div id="cases"></div></div>
+                <div class="panel"><h2>Usuarios recurrentes</h2><div id="users"></div></div>
+                <div class="panel"><h2>Múltiples transacciones</h2><div id="multi"></div></div>
+            </div>
+
+            <div class="panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <h2 style="margin:0;">Historial de transacciones</h2>
+                    <select id="txn-filter" style="width:auto; padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+                        <option value="">Todas</option>
+                        <option>VALID</option><option>SUSPICIOUS</option><option>REJECTED</option>
+                    </select>
+                </div>
+                <div id="verify-out"></div>
+                <div class="tscroll"><table class="tight" id="txns"></table></div>
+                <div class="btn-row"><button class="btn small" id="txn-more" hidden>Ver más</button></div>
+            </div>
+
+            <div class="panel">
+                <h2>Logs</h2>
+                <div class="tscroll"><table class="tight" id="logs"></table></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/fraud-common.js"></script>
+    <script src="/static/antifraude.js"></script>
+</body>
+</html>
