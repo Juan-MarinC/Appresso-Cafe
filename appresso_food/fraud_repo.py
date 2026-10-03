@@ -81,11 +81,13 @@ class MongoRepository:
         db.logs.create_index([("evento", ASCENDING)], name="ix_log_evento")
 
     # --- escritura -----------------------------------------------------
-    def upsert_user(self, email: str, nombre: str, cedula: str, now: datetime) -> str:
+    def upsert_user(self, email: str, nombre: Optional[str], cedula: Optional[str], now: datetime) -> str:
+        # nombre/cédula son opcionales por API: si no llegan, se conservan los que ya tenía el usuario.
+        known = {k: v for k, v in (("nombre", nombre), ("cedula", cedula)) if v is not None}
         doc = self.db.usuarios.find_one_and_update(
             {"email": email},
             {
-                "$set": {"nombre": nombre, "cedula": cedula, "fecha_actualizacion": now},
+                "$set": {**known, "fecha_actualizacion": now},
                 "$setOnInsert": {"email": email, "estado": "ACTIVO", "fecha_creacion": now},
             },
             upsert=True,
@@ -202,7 +204,7 @@ class InMemoryRepository:
         if user is None:
             user = {"_id": str(next(self._ids)), "email": email, "estado": "ACTIVO", "fecha_creacion": now}
             self.users[email] = user
-        user.update(nombre=nombre, cedula=cedula, fecha_actualizacion=now)
+        user.update({k: v for k, v in (("nombre", nombre), ("cedula", cedula)) if v is not None}, fecha_actualizacion=now)
         return user["_id"]
 
     def insert_transaction(self, doc) -> str:

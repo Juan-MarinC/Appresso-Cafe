@@ -10,7 +10,8 @@ barrios y prioriza despachos con un heap.
 ## Estado actual
 
 Lo que se pidió y qué tiene hoy la app. Todo lo marcado ✅ está implementado y
-probado (63 pruebas unitarias + 31 de punta a punta contra MongoDB real).
+probado (83 pruebas unitarias, 31 de punta a punta contra MongoDB real y 46 comprobaciones
+desde afuera con `tests/prueba_profesor.py`).
 
 ### Módulo de transacciones y detección de anomalías
 
@@ -32,10 +33,92 @@ Pedido a partir del PDF *Técnicas de resolución de problemas en desarrollo de 
 | Pruebas obligatorias (12 casos) | ✅ | `tests/test_fraud.py`, `tests/e2e_fraud_http.py` |
 | Guía para que una IA pruebe la app completa | ✅ | `tests/PRUEBA_CON_IA.md` |
 
+### Capacitación: métodos HTTP, hash y descomposición de problemas
+
+Diapositivas *Métodos HTTP*, *Hash de una transacción* y *Análisis y descomposición de problemas*.
+Se probó cada punto contra el servidor corriendo (`python tests/prueba_profesor.py`).
+
+| Tema de la capacitación | Estado | Dónde |
+|---|---|---|
+| GET: consultar productos | ✅ | `GET /api/productos`, `GET /api/productos/{id}` |
+| POST: crear un producto o una transacción | ✅ | `POST /api/productos`, `POST /api/transactions` |
+| PUT: reemplazar completo | ✅ | `PUT /api/productos/{id}` (pide todos los campos; lo no enviado vuelve a su valor por defecto) |
+| PATCH: actualizar solo lo enviado | ✅ | `PATCH /api/productos/{id}` (`{"precio": 60000}` no toca nombre ni categoría) |
+| DELETE: eliminar por id | ✅ | `DELETE /api/productos/{id}` (si el producto está en pedidos del historial responde 409 y explica) |
+| Hash HMAC-SHA256 con la llave de la clase, calculado con el código de la diapositiva | ✅ | `fraud_hashing.py`; llave por defecto `mi_llave_privada_123` |
+| Calcular / verificar el hash de **cualquier** JSON (el de la diapositiva: `id, producto, cantidad, valor`) | ✅ | `POST /api/hash/calcular`, `POST /api/hash/verificar` |
+| Aceptar o rechazar según coincida el hash (y decir por qué) | ✅ | `POST /api/transactions`, y `hash` opcional en POST/PUT/PATCH de productos |
+| "Un hash por sí solo no autentica al remitente" | ✅ documentado | sección *Hash*; el hash prueba integridad, no identidad |
+| Descomposición: validar cada producto, saltar los inválidos, sumar el total (`Mouse "50000" x "2"` + `Teclado`) | ✅ | `POST /api/totales` |
+| Divide y vencerás / recursividad (dividir, resolver, combinar) | ✅ ya existía | `algorithms.recursive_total_units`, laboratorio `/laboratorio` |
+
+**Qué faltaba y se agregó:** los métodos PUT/PATCH/DELETE (la app solo tenía POST y GET), un hash que
+se pueda calcular con el código de la clase (antes el servidor firmaba con otra llave y exigía
+`nombre` y `cédula`, que no están en la diapositiva), el cálculo de totales y los logs de cada petición.
+
+### Rutas para probar y ver qué pasa (`/logs`)
+
+Todas funcionan en `http://localhost:8000` y por la URL pública de ngrok.
+
+| Qué | Ruta |
+|---|---|
+| **Logs en vivo**: cada petición, qué envió, qué respondió la app y por qué | `/logs` |
+| Mismos logs en JSON (`?desde=N` trae solo las nuevas, `?automaticas=true` incluye las de las páginas) | `GET /api/logs/http` |
+| Documentación interactiva: se prueba cada ruta con un botón | `/docs` |
+| Índice de todas las rutas de la API | `GET /api` |
+| Estado de MongoDB y de la app | `GET /api/health` |
+| Logs de negocio (transacciones, anomalías, hash) | `GET /api/logs` |
+| Archivos en disco (también en la consola del servidor) | `logs/http.log`, `logs/fraud.log` |
+
+Cada respuesta de la app (salvo archivos estáticos y `/api/logs/http`) trae el encabezado `X-Request-Id`: ese mismo `id` aparece en `/logs`, así que si alguien
+dice "me dio error", se busca su `id` y se ve exactamente qué envió y qué respondió la app.
+**Los errores no salen pelados**: un 404, un 405, un JSON roto, un parámetro inválido o un
+error inesperado responden `{"ok": false, "motivo": ..., "mensaje": ...}` explicando la causa y qué hacer.
+Si el error es un fallo del servidor (500), la traza completa queda en `/logs`.
+
+### Probarlo desde afuera con ngrok
+
+Para que el profesor entre desde su equipo hay que publicar el puerto 8000. Pasos (PowerShell):
+
+1. Cree una cuenta gratis en <https://dashboard.ngrok.com/signup> y copie su *authtoken*
+   (<https://dashboard.ngrok.com/get-started/your-authtoken>). **Sin authtoken ngrok no arranca** (`ERR_NGROK_4018`).
+2. Instale el agente: `winget install ngrok.ngrok` (o descárguelo de <https://ngrok.com/download>) y registre el token una sola vez:
+
+   ```powershell
+   ngrok config add-authtoken SU_TOKEN
+   ```
+
+3. Arranque MongoDB y la app (ver "Cada vez que quiera usarla") y, en **otra** terminal:
+
+   ```powershell
+   ngrok http 8000
+   ```
+
+4. ngrok muestra una línea `Forwarding https://xxxx.ngrok-free.app -> http://localhost:8000`.
+   Esa URL es la que se le da al profesor. Compruébela primero: `https://xxxx.ngrok-free.app/api/health`.
+5. Deje abierto `https://xxxx.ngrok-free.app/logs` (o `http://localhost:8000/logs`): cada petición del
+   profesor aparece ahí con `origen: ngrok` y su IP. El inspector de ngrok está en `http://127.0.0.1:4040`.
+6. Antes de la sustentación, ejecute **desde otro equipo o red** (el celular con datos sirve):
+   `python tests/prueba_profesor.py https://xxxx.ngrok-free.app`. Si pasa, el profesor no debería ver errores.
+
+Qué debe saber el profesor:
+
+- **Llave:** por defecto es `mi_llave_privada_123`, la del código de la clase. Para usar otra, arranque con
+  `$env:APPRESSO_HMAC_SECRET="otra"` y avísele.
+- **Navegador:** con la cuenta gratis, ngrok muestra una página de advertencia antes de la app. Postman,
+  curl, Python `requests` y similares no la ven; en el navegador se pulsa *Visit Site*, o se envía el
+  encabezado `ngrok-skip-browser-warning: 1` en las llamadas hechas por código.
+- **La URL cambia** cada vez que se reinicia ngrok (salvo que reserve un dominio gratis en el panel de ngrok).
+- Si MongoDB está apagado, solo las rutas de transacciones responden `503` explicando el motivo; productos, hash y totales siguen funcionando.
+
 **Limitaciones conocidas:**
 
 - La ventana activa vive en **memoria del proceso**: ejecute un solo proceso
   de uvicorn (sin `--workers`). Al reiniciar se reconstruye desde MongoDB.
+- La página `/logs` guarda en memoria las últimas 1.000 peticiones (se vacía al reiniciar); lo que
+  sigue disponible en `logs/http.log`. No registra `/static` ni `/api/logs/http`.
+- `DELETE /api/productos/{id}` borra de verdad un producto sin historial: quien tenga la URL pública
+  puede vaciar el menú. Úsela solo durante la prueba.
 - Los pedidos de la app de comidas (`/`) y las transacciones antifraude son
   sistemas **separados**: un pedido no genera una transacción automáticamente.
 - No hay autenticación de usuarios. El hash garantiza integridad, no identidad.
@@ -113,6 +196,10 @@ el más pedido en Belén Castilla?" con un solo `JOIN` entre `orders`,
 - `growth.py`: progresión aritmética aplicada a fidelización de clientes.
 - `regression.py`: pronóstico de ventas con regresión lineal (NumPy).
 - `fraud_*.py`, `sliding_window.py`: módulo antifraude (ver sección más abajo).
+- `productos_api.py`: API REST de productos (GET/POST/PUT/PATCH/DELETE).
+- `capacitacion_api.py`: hash HMAC de cualquier JSON, totales (descomposición de problemas) e índice `/api`.
+- `api_helpers.py`: lectura del cuerpo JSON, errores explicados y verificación de hash compartida.
+- `http_log.py`: bitácora de peticiones (`/logs`) y manejo de errores con explicación.
 - `templates/`, `static/`: interfaz web.
 
 ## Cómo ejecutar la app
@@ -162,8 +249,8 @@ docker run -d --name appresso-mongo --restart unless-stopped -p 27017:27017 -v a
 
 Si MongoDB no está disponible, la app arranca igual: solo el módulo
 antifraude responde `503` con el motivo y se reconecta solo cuando MongoDB vuelve.
-Para que otro equipo entre, use la IP de este equipo en lugar de `localhost`
-y permita el puerto 8000 en el firewall de Windows.
+Para que otro equipo de la misma red entre, use la IP de este equipo en lugar de `localhost`
+y permita el puerto 8000 en el firewall de Windows; desde otra red, use ngrok (ver más abajo).
 
 ### Comprobar que todo funciona
 
@@ -211,7 +298,7 @@ Cómo ejecutarlo: ver "Cómo ejecutar la app" más arriba (necesita MongoDB).
 |---|---|---|
 | `APPRESSO_WINDOW_SECONDS` | `10` | Tamaño de la ventana deslizante |
 | `APPRESSO_MAX_TRANSACTIONS` | `3` | N o más transacciones del mismo usuario en la ventana = `POSSIBLE_FRAUD` |
-| `APPRESSO_HMAC_SECRET` | llave de desarrollo | Llave del HMAC-SHA256 (**cámbiela fuera de desarrollo**) |
+| `APPRESSO_HMAC_SECRET` | `mi_llave_privada_123` (la de la clase) | Llave del HMAC-SHA256 (**cámbiela fuera de la clase**) |
 | `APPRESSO_MONGO_URI` | `mongodb://localhost:27017` | Conexión a MongoDB |
 | `APPRESSO_MONGO_DB` | `appresso_food` | Base de datos |
 | `APPRESSO_BAND_RULES_ENABLED` | `true` | Segunda capa: límite por franja horaria |
@@ -227,12 +314,15 @@ JSON -> validación + normalización -> hash HMAC-SHA256 -> ID duplicado
      -> contar -> comparar con el límite -> regla por horario -> guardar -> log -> responder
 ```
 
-Cuerpo (los nombres de campo son los del PDF más `nombre` y `cedula`):
+Cuerpo (los nombres de campo son los del PDF; `nombre`, `cedula` y `hash` son opcionales):
 
 ```json
-{ "idTxn": 10001, "nombre": "Ana Pérez", "cedula": "1012345678", "user": "aa@aa.com",
-  "date": "2026-09-23T10:30:01.120", "value": 50000, "paymentMethod": "Tarjeta", "hash": "(opcional)" }
+{ "idTxn": 10001, "user": "aa@aa.com", "date": "2026-09-23T10:30:01.120",
+  "value": 50000, "paymentMethod": "Tarjeta" }
 ```
+
+El formulario web sí exige `nombre` y `cedula`; por API, si llegan se validan igual que el resto y si no
+llegan no pasa nada. Si faltan campos obligatorios, la respuesta incluye `formato_esperado` con un ejemplo.
 
 Respuestas: `201` válida o sospechosa, `422` rechazada, `409` ID duplicado,
 `400` JSON mal formado, `503` sin MongoDB.
@@ -293,12 +383,20 @@ zona horaria se convierten a la hora local del servidor.
 
 ### Hash (HMAC + SHA-256)
 
-Se calcula sobre JSON determinista (`sort_keys=True`, separadores `(",", ":")`)
-de los datos **ya normalizados**, por lo que `50000` y `"50000"` dan el mismo
-hash. Si el cliente envía `hash`, se recalcula y se rechaza (`HASH_MISMATCH`)
-si no coincide; si no lo envía, el servidor lo genera y lo guarda.
-`GET /api/transactions/{id}/verify` lo recalcula después con los datos
+Es el código de la clase: JSON determinista (`sort_keys=True`, separadores `(",", ":")`) firmado con
+`hmac.new(LLAVE, datos.encode("utf-8"), hashlib.sha256).hexdigest()`. Si el cliente envía `hash`, el
+servidor lo compara con el HMAC **del JSON tal como llegó** (sin el campo `hash`), que es lo que firmó el
+cliente; también acepta el de los datos normalizados (el que calcula el formulario, donde `50000` y
+`"50000"` dan el mismo hash). Si no coincide se rechaza (`HASH_MISMATCH`, HTTP 422); si no lo envía, el
+servidor lo genera y lo guarda. `GET /api/transactions/{id}/verify` lo recalcula después con los datos
 guardados y detecta alteraciones en la base de datos.
+
+**Un `HASH_MISMATCH` siempre explica la causa** (campo `diagnostico_hash`): si el hash es el de otra llave
+conocida ("firmó con la llave anterior de Appresso"), si es un SHA-256 simple sin llave, o si los datos
+cambiaron; además entrega el texto exacto que firma el servidor y la huella de su llave
+(`hashlib.sha256(LLAVE).hexdigest()[:12]`) para compararla con la de quien firmó. Ver la huella en `GET /api/config`.
+La huella y `POST /api/hash/calcular` solo existen con `APPRESSO_HASH_HELPER=true` (el modo clase, por defecto):
+firmar datos a pedido de cualquiera permite fabricar hashes válidos, así que fuera de la clase se desactiva con `APPRESSO_HASH_HELPER=false`.
 
 > Un hash **no autentica al remitente**: garantiza integridad, no identidad.
 > Además, `POST /api/transactions/hash` firma cualquier dato con la llave del
@@ -330,7 +428,11 @@ Colecciones (adaptación a documentos del modelo de la pág. 45 del PDF):
 | POST | `/api/transactions` | Procesar una transacción |
 | GET | `/api/transactions?estado=&usuario=&limit=` | Historial |
 | GET | `/api/transactions/{id}/verify` | Re-verificar el hash guardado |
-| POST | `/api/transactions/hash` | Calcular el hash que espera el servidor |
+| POST | `/api/transactions/hash` | Calcular el hash que espera el servidor (datos de una transacción) |
+| POST | `/api/hash/calcular` · `/api/hash/verificar` | Hash de **cualquier** JSON / verificarlo y decir ACEPTADA o RECHAZADA |
+| GET · POST · PUT · PATCH · DELETE | `/api/productos` · `/api/productos/{id}` | CRUD de productos del menú |
+| POST | `/api/totales` | Total de una lista de productos validando cada uno |
+| GET | `/api` · `/api/logs/http` · `/logs` | Índice de rutas, logs de peticiones (JSON y página) |
 | GET | `/api/anomalies?estado=` · `PATCH /api/anomalies/{id}` | Anomalías y cambio de estado |
 | GET | `/api/anomalies/{id}/timeline` | Línea de tiempo de una anomalía |
 | GET | `/api/window?usuario=` | Ventana deslizante activa |

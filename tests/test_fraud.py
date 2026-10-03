@@ -1,9 +1,11 @@
+import hashlib
+import hmac
 import json
 import unittest
 from datetime import datetime, timedelta
 
 from appresso_food import fraud_hashing as hashing
-from appresso_food.fraud_config import FraudConfig
+from appresso_food.fraud_config import DEFAULT_SECRET, LEGACY_SECRET, FraudConfig
 from appresso_food.fraud_repo import InMemoryRepository
 from appresso_food.fraud_service import FraudService, band_for
 from appresso_food.sliding_window import SlidingWindowManager
@@ -49,12 +51,24 @@ class ValidationTests(FraudTestBase):
         self.assertEqual(out.body["ventana"]["cantidad"], 1)
 
     def test_2_null_field_rejected(self):
-        for field in ("idTxn", "nombre", "cedula", "user", "date", "value", "paymentMethod"):
+        for field in ("idTxn", "user", "date", "value", "paymentMethod"):
             out = self.send(txn(10, **{field: None}))
             self.assertEqual((out.body["estado"], out.body["motivo"]), ("REJECTED", "NULL_FIELD"), field)
+            self.assertIn("formato_esperado", out.body)
         absent = txn(11)
         del absent["user"]
         self.assertEqual(self.send(absent).body["motivo"], "NULL_FIELD")
+
+    def test_nombre_and_cedula_are_optional_in_the_api(self):
+        pdf_format = txn(12)
+        del pdf_format["nombre"], pdf_format["cedula"]
+        self.assertEqual(self.send(pdf_format).body["estado"], "VALID")
+        self.assertEqual(self.send(txn(13, nombre=None, cedula=None)).body["estado"], "VALID")
+        self.assertNotIn("nombre", self.repo.users["a@a.com"])
+        self.send(txn(14))
+        self.send(txn(15, nombre=None))  # no borra el nombre que ya tenía el usuario
+        self.assertEqual(self.repo.users["a@a.com"]["nombre"], "Ana Pérez")
+        self.assertTrue(self.service.verify("12")["coincide"])
 
     def test_3_empty_field_rejected(self):
         for field in ("nombre", "user", "date", "paymentMethod"):
@@ -98,7 +112,7 @@ class ValidationTests(FraudTestBase):
         self.assertEqual(self.send(txn(75, paymentMethod="tarjeta")).body["estado"], "VALID")
 
     def test_all_errors_are_reported(self):
-        out = self.send(txn(80, user="mal", value="abc", cedula=None))
+        out = self.send(txn(80, user="mal", value="abc", cedula="12ab"))
         self.assertEqual({e["campo"] for e in out.body["errores"]}, {"user", "value", "cedula"})
 
     def test_malformed_json_and_non_object(self):
@@ -337,6 +351,50 @@ class HashTests(FraudTestBase):
         self.assertTrue(any(l["evento"] == "HASH_NO_COINCIDE" for l in self.repo.logs))
         self.assertEqual(self.send(txn(3, hash="0" * 64)).body["motivo"], "HASH_MISMATCH")
         self.assertEqual(self.send(txn(3, hash="xyz")).body["motivo"], "INVALID_HASH_FORMAT")
+
+    @staticmethod
+    def _class_hash(payload, key):
+        """El código de la diapositiva, tal cual."""
+        datos = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return hmac.new(key, datos.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    def test_hash_computed_like_the_class_slide_is_accepted(self):
+        # idTxn entero, fecha sin milisegundos y sin nombre/cédula: el servidor normaliza distinto,
+        # pero el hash se compara contra el JSON tal como llegó.
+        payload = {"idTxn": 1001, "user": "Profe@Correo.com", "date": "2026-09-23T10:30:01", "value": 50000, "paymentMethod": "tarjeta"}
+        out = self.send(dict(payload, hash=self._class_hash(payload, b"secreto-de-prueba")))
+        self.assertEqual((out.http_status, out.body["estado"], out.body["hash_origen"]), (201, "VALID", "CLIENTE_VERIFICADO"))
+        self.assertEqual(out.body["verificacion_hash"]["calculado_sobre"], "PAYLOAD_RECIBIDO")
+        self.assertTrue(self.service.verify("1001")["coincide"])
+        # Unicode sin escapar (JSON.stringify de JavaScript) también se acepta.
+        js = {"idTxn": 1002, "nombre": "Ana Pérez", "user": "a@a.com", "date": "2026-09-23T10:30:02", "value": 50000, "paymentMethod": "Tarjeta"}
+        js_text = json.dumps(js, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        js_hash = hmac.new(b"secreto-de-prueba", js_text.encode("utf-8"), hashlib.sha256).hexdigest()
+        self.assertEqual(self.send(dict(js, hash=js_hash)).body["estado"], "VALID")
+
+    def test_hash_mismatch_explains_the_cause(self):
+        payload = {"idTxn": 2001, "user": "p@p.com", "date": "2026-09-23T10:30:01", "value": 50000, "paymentMethod": "Tarjeta"}
+        cases = {
+            "otra-llave": (self._class_hash(payload, DEFAULT_SECRET.encode()), "mi_llave_privada_123"),
+            "sin-llave": (hashlib.sha256(hashing.canonical_json(payload).encode()).hexdigest(), "SIN llave"),
+            "alterado": (self._class_hash(dict(payload, value=1), b"secreto-de-prueba"), "cambiaron"),
+        }
+        for name, (client_hash, expected_text) in cases.items():
+            out = self.send(dict(payload, hash=client_hash))
+            self.assertEqual((out.http_status, out.body["motivo"]), (422, "HASH_MISMATCH"), name)
+            diagnosis = out.body["diagnostico_hash"]
+            self.assertIn(expected_text, diagnosis["causa_probable"], name)
+            self.assertEqual(diagnosis["texto_que_firma_el_servidor"], hashing.canonical_json(payload))
+            self.assertEqual(diagnosis["huella_llave_servidor"], hashing.key_fingerprint("secreto-de-prueba"))
+
+    def test_default_key_is_the_class_key_and_old_data_still_verifies(self):
+        self.assertEqual(FraudConfig().hmac_secret, "mi_llave_privada_123")
+        legacy = FraudService(FraudConfig(hmac_secret=LEGACY_SECRET, band_rules_enabled=False), self.repo, clock=lambda: NOW)
+        legacy.process(txn(3001))
+        current = FraudService(FraudConfig(band_rules_enabled=False), self.repo, clock=lambda: NOW)
+        result = current.verify("3001")
+        self.assertTrue(result["coincide"])
+        self.assertIn("anterior", result["mensaje"])
 
     def test_11b_tampering_after_storage_is_detected(self):
         self.send(txn(4))

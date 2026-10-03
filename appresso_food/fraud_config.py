@@ -4,7 +4,7 @@ Variables de entorno:
     APPRESSO_WINDOW_SECONDS   tamaño de la ventana deslizante en segundos (10)
     APPRESSO_MAX_TRANSACTIONS umbral: N o más transacciones del mismo usuario dentro de la ventana
                               se marcan como POSSIBLE_FRAUD (3)
-    APPRESSO_HMAC_SECRET      llave secreta del HMAC-SHA256
+    APPRESSO_HMAC_SECRET      llave secreta del HMAC-SHA256 (por defecto la del ejemplo de clase)
     APPRESSO_MONGO_URI        cadena de conexión a MongoDB (mongodb://localhost:27017)
     APPRESSO_MONGO_DB         base de datos (appresso_food)
     APPRESSO_BAND_RULES_ENABLED  "true"/"false": segunda capa de reglas por horario (true)
@@ -19,7 +19,19 @@ import os
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
-DEFAULT_SECRET = "appresso-dev-secret-change-me"
+from appresso_food.fraud_hashing import key_fingerprint
+
+# Llave del código de la clase (LLAVE_SECRETA = b"mi_llave_privada_123"): quien firme con ese mismo
+# código obtiene hashes que este servidor acepta sin configurar nada.
+DEFAULT_SECRET = "mi_llave_privada_123"
+# Llave por defecto de versiones anteriores: solo se usa para verificar transacciones ya guardadas.
+LEGACY_SECRET = "appresso-dev-secret-change-me"
+
+# Llaves conocidas, para explicar un HASH_MISMATCH ("firmó con la llave X, el servidor usa otra").
+KNOWN_SECRETS = {
+    "la llave de ejemplo de la clase ('mi_llave_privada_123')": DEFAULT_SECRET,
+    "la llave de desarrollo anterior de Appresso": LEGACY_SECRET,
+}
 
 # (nombre, inicio, fin, límite de ventas por usuario en la franja). Valores del PDF, pág. 38.
 # Una franja que cruza la medianoche (inicio > fin) continúa al día siguiente.
@@ -68,9 +80,18 @@ class FraudConfig:
     def uses_default_secret(self) -> bool:
         return self.hmac_secret == DEFAULT_SECRET
 
+    def other_known_secrets(self) -> dict:
+        """Llaves conocidas distintas de la configurada (descripción -> llave)."""
+        return {name: key for name, key in KNOWN_SECRETS.items() if key != self.hmac_secret}
+
     def public_dict(self) -> dict:
         """Configuración visible para el frontend (nunca incluye la llave secreta ni la URI)."""
         return {
+            "hash": {
+                "algoritmo": "HMAC-SHA256",
+                "llave_de_clase": self.uses_default_secret,
+                **({"huella_llave": key_fingerprint(self.hmac_secret)} if self.hash_helper_enabled else {}),
+            },
             "window_seconds": self.window_seconds,
             "max_transactions": self.max_transactions,
             "band_rules_enabled": self.band_rules_enabled,

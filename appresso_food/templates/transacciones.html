@@ -21,13 +21,14 @@
             <a href="/transacciones" class="active">Transacciones</a>
             <a href="/antifraude">Antifraude</a>
             <a href="/laboratorio">Laboratorio de complejidad</a>
+            <a href="/logs">Logs</a>
         </div>
 
         {% if not mongo_ok %}
         <div class="banner bad">MongoDB no está disponible, por eso no se pueden registrar transacciones. {{ mongo_error }}</div>
         {% endif %}
         {% if default_secret %}
-        <div class="banner warn">Se usa la llave HMAC de desarrollo. Defina APPRESSO_HMAC_SECRET en producción.</div>
+        <div class="banner warn">Se usa la llave HMAC de ejemplo de la clase: quien tenga ese código puede firmar transacciones válidas. Defina APPRESSO_HMAC_SECRET fuera de clase.</div>
         {% endif %}
 
         <script id="cfg" type="application/json">{{ config|tojson }}</script>

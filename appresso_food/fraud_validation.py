@@ -6,6 +6,10 @@ convierte en 0, NaN u otro valor "válido". Se rechaza con un código y un motiv
 
 Este módulo es la autoridad final: el frontend valida lo mismo solo para dar
 feedback inmediato, pero el backend no confía en él.
+
+`nombre` y `cedula` no son campos del PDF: el formulario los exige, pero por API
+son opcionales (ausentes o null) para aceptar el formato del PDF tal cual. Si
+llegan, se validan igual que el resto.
 """
 
 import math
@@ -55,8 +59,8 @@ class FieldError:
 @dataclass
 class NormalizedTransaction:
     id_txn: str
-    nombre: str
-    cedula: str
+    nombre: Optional[str]
+    cedula: Optional[str]
     email: str
     fecha: datetime
     valor: float
@@ -68,10 +72,11 @@ def _fold(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c) != "Mn").casefold()
 
 
-def _presence(raw: dict, key: str, errors: List[FieldError], label: str) -> Tuple[bool, Any]:
-    """True si el campo trae un valor utilizable (ni ausente, ni null, ni vacío)."""
+def _presence(raw: dict, key: str, errors: List[FieldError], label: str, optional: bool = False) -> Tuple[bool, Any]:
+    """True si el campo trae un valor utilizable (ni ausente, ni null, ni vacío). Un opcional puede faltar o ser null."""
     if key not in raw or raw[key] is None:
-        errors.append(FieldError(key, NULL_FIELD, f"'{label}' es obligatorio y llegó null o ausente."))
+        if not optional:
+            errors.append(FieldError(key, NULL_FIELD, f"'{label}' es obligatorio y llegó null o ausente."))
         return False, None
     value = raw[key]
     if isinstance(value, str) and not value.strip():
@@ -142,7 +147,7 @@ def validate_transaction(raw: Any, config: FraudConfig) -> Tuple[Optional[Normal
         else:
             id_txn = str(value).strip()
 
-    ok, value = _presence(raw, "nombre", errors, "nombre del cliente")
+    ok, value = _presence(raw, "nombre", errors, "nombre del cliente", optional=True)
     if ok:
         if not isinstance(value, str):
             errors.append(_type_error("nombre", "nombre del cliente", value, "un texto"))
@@ -151,7 +156,7 @@ def validate_transaction(raw: Any, config: FraudConfig) -> Tuple[Optional[Normal
         else:
             nombre = " ".join(value.split())
 
-    ok, value = _presence(raw, "cedula", errors, "cédula")
+    ok, value = _presence(raw, "cedula", errors, "cédula", optional=True)
     if ok:
         if isinstance(value, bool) or not isinstance(value, (int, str)):
             errors.append(_type_error("cedula", "cédula", value, "un número o texto de dígitos"))

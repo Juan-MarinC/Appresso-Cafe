@@ -455,3 +455,49 @@ def daily_totals(channel: Optional[str] = None) -> List[float]:
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [row[1] for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# API REST de productos (GET / POST / PUT / PATCH / DELETE)
+# ---------------------------------------------------------------------------
+
+def find_product_by_name(name: str) -> Optional[Product]:
+    conn = _connect()
+    row = conn.execute("SELECT id, name, category, price FROM products WHERE lower(name) = lower(?)", (name,)).fetchone()
+    conn.close()
+    return Product(*row) if row else None
+
+
+def create_product(name: str, category: str, price: float) -> Product:
+    conn = _connect()
+    cur = conn.execute("INSERT INTO products (name, category, price) VALUES (?, ?, ?)", (name, category, price))
+    conn.commit()
+    product_id = cur.lastrowid
+    conn.close()
+    return Product(product_id, name, category, price)
+
+
+def update_product(product_id: int, name: str, category: str, price: float) -> Optional[Product]:
+    conn = _connect()
+    cur = conn.execute("UPDATE products SET name = ?, category = ?, price = ? WHERE id = ?", (name, category, price, product_id))
+    conn.commit()
+    conn.close()
+    return Product(product_id, name, category, price) if cur.rowcount else None
+
+
+def product_usage(product_id: int) -> Tuple[int, int]:
+    """(pedidos en los que aparece, unidades vendidas). Un producto con historial no se puede borrar."""
+    conn = _connect()
+    row = conn.execute(
+        "SELECT COUNT(DISTINCT order_id), COALESCE(SUM(quantity), 0) FROM order_items WHERE product_id = ?", (product_id,)
+    ).fetchone()
+    conn.close()
+    return row[0], row[1]
+
+
+def delete_product(product_id: int) -> None:
+    conn = _connect()
+    conn.execute("DELETE FROM product_ingredients WHERE product_id = ?", (product_id,))
+    conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()

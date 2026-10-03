@@ -40,6 +40,24 @@ LEVELS = ["BAJO", "MEDIO", "ALTO"]
 REBUILD_LIMIT = 5000
 MAX_PAYLOAD_CHARS = 4000
 
+# Se adjunta a los rechazos por campos ausentes o JSON inválido para que quien llama vea qué se espera.
+EXPECTED_FORMAT = {
+    "obligatorios": {
+        "idTxn": "entero o texto (letras, números, - y _)",
+        "user": "correo electrónico",
+        "date": "fecha y hora ISO 8601, ej. 2026-09-23T10:30:01.120",
+        "value": "número mayor a 0 (también \"50000\")",
+        "paymentMethod": "uno de los métodos válidos (ver /api/config)",
+    },
+    "opcionales": {
+        "nombre": "nombre del cliente",
+        "cedula": "6 a 10 dígitos",
+        "hash": "HMAC-SHA256 en hexadecimal del JSON sin el campo hash (ver POST /api/hash/calcular)",
+    },
+    "ejemplo": {"idTxn": 10001, "user": "aa@aa.com", "date": "2026-09-23T10:30:01.120", "value": 50000, "paymentMethod": "Tarjeta"},
+}
+FORMAT_ERRORS = {validation.NULL_FIELD, validation.EMPTY_FIELD, validation.INVALID_TYPE, validation.MALFORMED_JSON}
+
 
 def build_file_logger(path: Path) -> logging.Logger:
     """Log en archivo (PDF, pág. 28). El log en MongoDB es el que consulta el dashboard."""
@@ -157,6 +175,9 @@ class FraudService:
     # ------------------------------------------------------------------ entrada
     def process_body(self, body: bytes) -> Outcome:
         text = body.decode("utf-8", errors="replace")
+        if not body.strip():
+            errors = [FieldError("_body", validation.MALFORMED_JSON, "El cuerpo llegó vacío. Envíe un objeto JSON con el encabezado Content-Type: application/json.")]
+            return self._reject(None, text, errors, self.clock(), http_status=400)
         try:
             raw = json.loads(body.decode("utf-8"))
         except (UnicodeDecodeError, ValueError) as exc:
@@ -176,12 +197,15 @@ class FraudService:
         if errors:
             return self._reject(raw, raw_text, errors, now)
 
+        # El hash que se guarda es el de los datos normalizados: con él se re-verifica la integridad después.
         expected = hashing.compute_hash(self._canonical(norm), self.config.hmac_secret)
-        if norm.hash_cliente and not hashing.hashes_match(expected, norm.hash_cliente):
+        hash_check = self._check_client_hash(raw, norm)
+        if not hash_check["coincide"]:
+            diagnosis = hash_check["diagnostico"]
             return self._reject(
                 raw, raw_text,
-                [FieldError("hash", validation.HASH_MISMATCH, "El hash recibido no coincide con los datos: la transacción fue modificada o firmada con otra llave.")],
-                now, norm=norm, hash_value=norm.hash_cliente, http_status=422,
+                [FieldError("hash", validation.HASH_MISMATCH, f"El hash recibido no coincide con los datos. {diagnosis['causa_probable']}")],
+                now, norm=norm, hash_value=norm.hash_cliente, http_status=422, extra={"diagnostico_hash": diagnosis},
             )
         hash_origin = "CLIENTE_VERIFICADO" if norm.hash_cliente else "SERVIDOR"
 
@@ -244,6 +268,8 @@ class FraudService:
                 "errores": [],
                 "hash": expected,
                 "hash_origen": hash_origin,
+                "hash_cliente": norm.hash_cliente,
+                "hash_verificado_sobre": hash_check.get("calculado_sobre"),
                 "aceptada": True,
                 "cantidad_ventana": count,
                 "payload_original": _clip(raw_text, MAX_PAYLOAD_CHARS),
@@ -278,6 +304,7 @@ class FraudService:
             "usuario": norm.email,
             "hash": expected,
             "hash_origen": hash_origin,
+            "verificacion_hash": hash_check,
             "ventana": {
                 "usuario": norm.email,
                 "cantidad": count,
@@ -294,6 +321,28 @@ class FraudService:
         return Outcome(201, body)
 
     # ------------------------------------------------------------------ helpers
+    def _check_client_hash(self, raw: dict, norm: NormalizedTransaction) -> dict:
+        """Compara el hash del cliente con el HMAC del JSON recibido (sin `hash`), como en la clase,
+        o con el de los datos normalizados (el que calcula el formulario)."""
+        if not norm.hash_cliente:
+            return {"hash_recibido": None, "coincide": True, "mensaje":
+                    "No se envió hash: el servidor calculó uno (HMAC-SHA256) y lo guardó para verificar la integridad después."}
+        candidates = [("PAYLOAD_RECIBIDO", hashing.without_hash(raw)), ("NORMALIZADO", self._canonical(norm))]
+        match = hashing.find_match(norm.hash_cliente, candidates, self.config.hmac_secret)
+        if match is None:
+            return {"hash_recibido": norm.hash_cliente, "coincide": False,
+                    "diagnostico": hashing.diagnose(norm.hash_cliente, candidates, self.config.hmac_secret, self.config.other_known_secrets(),
+                                                self.config.hash_helper_enabled)}
+        label, text = match
+        return {
+            "hash_recibido": norm.hash_cliente,
+            "coincide": True,
+            "algoritmo": "HMAC-SHA256",
+            "calculado_sobre": label,
+            "texto_firmado": text,
+            "mensaje": "El hash coincide: los datos llegaron sin modificaciones y se firmaron con la llave compartida.",
+        }
+
     def window_delta(self) -> timedelta:
         return timedelta(seconds=self.config.window_seconds)
 
@@ -347,7 +396,7 @@ class FraudService:
         return self._reject(raw, raw_text, errors, now, norm=norm, hash_value=hash_value, http_status=409)
 
     def _reject(self, raw, raw_text, errors: List[FieldError], now, norm: Optional[NormalizedTransaction] = None,
-                hash_value: Optional[str] = None, http_status: int = 422) -> Outcome:
+                hash_value: Optional[str] = None, http_status: int = 422, extra: Optional[dict] = None) -> Outcome:
         source = raw if isinstance(raw, dict) else {}
         valor = source.get("value")
         doc = {
@@ -378,17 +427,21 @@ class FraudService:
             self._log("ERROR", "RECHAZO_NO_GUARDADO", detalle=str(exc))
         evento = "HASH_NO_COINCIDE" if errors[0].codigo == validation.HASH_MISMATCH else "TXN_REJECTED"
         self._log("WARN", evento, doc["usuario_email"], doc["id_txn"], txn_id, STATUS_REJECTED, errors[0].codigo, hash_value,
-                  detalle="; ".join(f"{e.campo}:{e.codigo}" for e in errors))
+                  detalle="; ".join(f"{e.campo}:{e.codigo}" for e in errors)
+                  + (f" | {extra['diagnostico_hash']['causa_probable']}" if extra and "diagnostico_hash" in extra else ""))
         body = {
             "ok": False,
             "estado": STATUS_REJECTED,
             "motivo": errors[0].codigo,
-            "mensaje": errors[0].mensaje if len(errors) == 1 else f"{len(errors)} errores de validación.",
+            "mensaje": errors[0].mensaje if len(errors) == 1 else f"{len(errors)} errores de validación en: {', '.join(dict.fromkeys(e.campo for e in errors))} (detalle en 'errores').",
             "id": txn_id,
             "idTxn": doc["id_txn"],
             "errores": [e.as_dict() for e in errors],
             "hash": hash_value,
+            **(extra or {}),
         }
+        if any(e.codigo in FORMAT_ERRORS for e in errors):
+            body["formato_esperado"] = EXPECTED_FORMAT
         return Outcome(http_status, body)
 
     # ------------------------------------------------------------------ consultas
@@ -408,11 +461,18 @@ class FraudService:
         if not doc.get("hash") or not doc.get("aceptada"):
             return {"idTxn": id_txn, "verificable": False, "mensaje": "La transacción fue rechazada: no tiene un hash de datos aceptados."}
         fields = hashing.canonical_fields(
-            doc["id_txn"], doc["nombre_cliente"], doc["cedula"], doc["usuario_email"],
+            doc["id_txn"], doc.get("nombre_cliente"), doc.get("cedula"), doc["usuario_email"],
             datetime.fromisoformat(doc["fecha_txn"]), doc["valor"], doc["metodo_pago"],
         )
         recomputed = hashing.compute_hash(fields, self.config.hmac_secret)
         matches = hashing.hashes_match(recomputed, doc["hash"])
+        signed_with = None
+        if not matches:
+            # Guardada antes de cambiar la llave: se verifica con la llave con que se firmó y se dice cuál fue.
+            for name, key in self.config.other_known_secrets().items():
+                if hashing.hashes_match(hashing.compute_hash(fields, key), doc["hash"]):
+                    matches, signed_with = True, name
+                    break
         self._log("INFO" if matches else "ERROR", "HASH_VERIFICADO" if matches else "HASH_INCONSISTENTE", doc["usuario_email"], id_txn,
                   doc["id"], doc["estado"], None if matches else validation.HASH_MISMATCH, doc["hash"])
         return {
@@ -421,7 +481,10 @@ class FraudService:
             "coincide": matches,
             "hash_guardado": doc["hash"],
             "hash_recalculado": recomputed,
-            "mensaje": "Integridad correcta: los datos guardados no cambiaron." if matches else "INCONSISTENCIA: los datos guardados ya no coinciden con su hash.",
+            "firmada_con": signed_with or "la llave configurada",
+            "mensaje": ("INCONSISTENCIA: los datos guardados ya no coinciden con su hash." if not matches
+                        else "Integridad correcta: los datos guardados no cambiaron."
+                        + (f" (Se firmó con {signed_with}, antes de cambiar la llave.)" if signed_with else "")),
         }
 
     def update_anomaly(self, anomaly_id: str, estado: str) -> Optional[dict]:
