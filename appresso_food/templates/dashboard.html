@@ -1,92 +1,86 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Dashboard - Appresso Food</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-</head>
-<body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">Appresso <span>Food</span></div>
-            <div class="badge">Analítica del negocio</div>
+{% extends "base.html" %}
+{% set pagina = "dashboard" %}
+
+{% block titulo %}Dashboard - Appresso Food{% endblock %}
+
+{% block contenido %}
+<p class="eyebrow">Analítica del negocio</p>
+
+    <div class="summary">
+        {% set local = channel_totals.get('local', {'orders': 0, 'revenue': 0}) %}
+        {% set domicilio = channel_totals.get('domicilio', {'orders': 0, 'revenue': 0}) %}
+        <div class="card">
+            <div class="label">Pedidos en local</div>
+            <div class="value">{{ local.orders }}</div>
+            <small>${{ "{:,.0f}".format(local.revenue) }} en ventas</small>
         </div>
-
-        <div class="navbar">
-            <a href="/">Pedir</a>
-            <a href="/cocina">Cocina</a>
-            <a href="/dashboard" class="active">Dashboard</a>
-            <a href="/transacciones">Transacciones</a>
-            <a href="/antifraude">Antifraude</a>
-            <a href="/laboratorio">Laboratorio de complejidad</a>
-            <a href="/logs">Logs</a>
+        <div class="card">
+            <div class="label">Pedidos a domicilio</div>
+            <div class="value">{{ domicilio.orders }}</div>
+            <small>${{ "{:,.0f}".format(domicilio.revenue) }} en ventas</small>
         </div>
-
-        <div class="summary">
-            {% set local = channel_totals.get('local', {'orders': 0, 'revenue': 0}) %}
-            {% set domicilio = channel_totals.get('domicilio', {'orders': 0, 'revenue': 0}) %}
-            <div class="card">
-                <div class="label">Pedidos en local</div>
-                <div class="value">{{ local.orders }}</div>
-                <small>${{ "{:,.0f}".format(local.revenue) }} en ventas</small>
-            </div>
-            <div class="card">
-                <div class="label">Pedidos a domicilio</div>
-                <div class="value">{{ domicilio.orders }}</div>
-                <small>${{ "{:,.0f}".format(domicilio.revenue) }} en ventas</small>
-            </div>
-            <div class="card">
-                <div class="label">Pronóstico local (7 días)</div>
-                <div class="value">{{ "%.0f"|format(forecast_local) if forecast_local is not none else 'N/A' }}</div>
-                <small>unidades, por regresión lineal</small>
-            </div>
-            <div class="card">
-                <div class="label">Pronóstico domicilio (7 días)</div>
-                <div class="value">{{ "%.0f"|format(forecast_domicilio) if forecast_domicilio is not none else 'N/A' }}</div>
-                <small>unidades, por regresión lineal</small>
-            </div>
+        <div class="card">
+            <div class="label">Pronóstico local (7 días)</div>
+            <div class="value">{{ "%.0f"|format(forecast_local) if forecast_local is not none else 'N/A' }}</div>
+            <small>unidades, por regresión lineal</small>
         </div>
-
-        <div class="content-grid">
-            <div class="panel">
-                <h2>Más pedidos (general)</h2>
-                <table>
-                    <tr><th>#</th><th>Producto</th><th>Unidades</th></tr>
-                    {% for name, qty in top_products %}
-                    <tr><td>{{ loop.index }}</td><td>{{ name }}</td><td>{{ qty }}</td></tr>
-                    {% else %}
-                    <tr><td colspan="3">Sin datos todavía.</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-
-            <div class="panel">
-                <h2>Producto favorito por barrio</h2>
-                <p class="subtitle">Relación barrio &harr; producto, calculada sobre los domicilios entregados.</p>
-                <table>
-                    <tr><th>Barrio</th><th>Producto más pedido</th><th>Unidades</th></tr>
-                    {% for neighborhood, items in top_by_neighborhood.items() %}
-                    {% for name, qty in items %}
-                    <tr><td>{{ neighborhood }}</td><td>{{ name }}</td><td>{{ qty }}</td></tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr><td colspan="3">Aún no hay domicilios entregados.</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
+        <div class="card">
+            <div class="label">Pronóstico domicilio (7 días)</div>
+            <div class="value">{{ "%.0f"|format(forecast_domicilio) if forecast_domicilio is not none else 'N/A' }}</div>
+            <small>unidades, por regresión lineal</small>
         </div>
+    </div>
 
-        <div class="panel" style="margin-top: 18px;">
-            <h2>Grafo de barrios (zona de cobertura)</h2>
-            <p class="subtitle">Nodo base: <strong>{{ restaurant_node }}</strong>. Cualquier barrio fuera de esta lista se rechaza automáticamente al pedir domicilio.</p>
+    <div class="content-grid">
+        <div class="panel">
+            <h2>Más pedidos (general)</h2>
             <table>
-                <tr><th>Origen</th><th>Destino</th><th>Distancia</th></tr>
-                {% for origin, destination, distance in graph_edges %}
-                <tr><td>{{ origin }}</td><td>{{ destination }}</td><td>{{ "%.1f"|format(distance) }} km</td></tr>
+                <tr><th>#</th><th>Producto</th><th>Unidades</th></tr>
+                {% for name, qty in top_products %}
+                <tr><td>{{ loop.index }}</td><td>{{ name }}</td><td>{{ qty }}</td></tr>
+                {% else %}
+                <tr><td colspan="3">Sin datos todavía.</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <div class="panel">
+            <h2>Producto favorito por barrio</h2>
+            <p class="subtitle">Relación barrio &harr; producto, calculada sobre los domicilios entregados.</p>
+            <table>
+                <tr><th>Barrio</th><th>Producto más pedido</th><th>Unidades</th></tr>
+                {% for neighborhood, items in top_by_neighborhood.items() %}
+                {% for name, qty in items %}
+                <tr><td>{{ neighborhood }}</td><td>{{ name }}</td><td>{{ qty }}</td></tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="3">Aún no hay domicilios entregados.</td></tr>
                 {% endfor %}
             </table>
         </div>
     </div>
-</body>
-</html>
+
+    <section class="seccion-mapa">
+    <p class="eyebrow">Zona de cobertura</p>
+    <h2>Grafo de barrios</h2>
+    {% include "_mapa.html" %}
+</section>
+
+<details class="panel" style="margin-top: 18px;">
+    <summary><strong>Ver el grafo como tabla</strong></summary>
+    <div>
+        <h2>Grafo de barrios (zona de cobertura)</h2>
+        <p class="subtitle">Nodo base: <strong>{{ restaurant_node }}</strong>. Cualquier barrio fuera de esta lista se rechaza automáticamente al pedir domicilio.</p>
+        <table>
+            <tr><th>Origen</th><th>Destino</th><th>Distancia</th></tr>
+            {% for origin, destination, distance in graph_edges %}
+            <tr><td>{{ origin }}</td><td>{{ destination }}</td><td>{{ "%.1f"|format(distance) }} km</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</details>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/mapa.js"></script>
+{% endblock %}

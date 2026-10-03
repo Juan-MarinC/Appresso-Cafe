@@ -2,9 +2,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from appresso_food import runtime, storage
-from appresso_food.models import CHANNEL_DOMICILIO, CHANNEL_LOCAL, OrderItem
-from appresso_food.runtime import CoverageError
+from appresso_food.nucleo import runtime
+from appresso_food.nucleo import storage
+from appresso_food.nucleo.models import CHANNEL_DOMICILIO, CHANNEL_LOCAL, OrderItem
+from appresso_food.nucleo.runtime import CoverageError
 
 
 class RuntimeTest(unittest.TestCase):

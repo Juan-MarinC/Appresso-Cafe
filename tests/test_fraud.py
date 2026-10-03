@@ -4,11 +4,11 @@ import json
 import unittest
 from datetime import datetime, timedelta
 
-from appresso_food import fraud_hashing as hashing
-from appresso_food.fraud_config import DEFAULT_SECRET, LEGACY_SECRET, FraudConfig
-from appresso_food.fraud_repo import InMemoryRepository
-from appresso_food.fraud_service import FraudService, band_for
-from appresso_food.sliding_window import SlidingWindowManager
+from appresso_food.antifraude import fraud_hashing as hashing
+from appresso_food.antifraude.fraud_config import DEFAULT_SECRET, LEGACY_SECRET, FraudConfig
+from appresso_food.antifraude.fraud_repo import InMemoryRepository
+from appresso_food.antifraude.fraud_service import FraudService, band_for
+from appresso_food.antifraude.sliding_window import SlidingWindowManager
 
 NOW = datetime(2026, 9, 30, 12, 0, 0)
 BASE = datetime(2026, 9, 23, 10, 0, 0)
@@ -118,7 +118,9 @@ class ValidationTests(FraudTestBase):
     def test_malformed_json_and_non_object(self):
         out = self.service.process_body(b'{"idTxn": 1, "user": ')
         self.assertEqual((out.http_status, out.body["motivo"]), (400, "MALFORMED_JSON"))
-        self.assertEqual(self.service.process_body(b"[1,2]").body["motivo"], "INVALID_TYPE")
+        lote = self.service.process_body(b"[1,2]")  # una lista es un lote: cada elemento se valida por separado
+        self.assertEqual((lote.http_status, lote.body["rechazadas"]), (201, 2))
+        self.assertEqual(lote.body["resultados"][0]["motivo"], "INVALID_TYPE")
         self.assertEqual(self.repo.transactions[0]["estado"], "REJECTED")  # se conserva con su motivo
 
     def test_rejected_transactions_are_kept_and_not_counted(self):

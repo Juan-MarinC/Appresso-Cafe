@@ -1,79 +1,60 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cocina - Appresso Food</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-</head>
-<body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">Appresso <span>Food</span></div>
-            <div class="badge">Operación de cocina</div>
-        </div>
+{% extends "base.html" %}
+{% set pagina = "cocina" %}
 
-        <div class="navbar">
-            <a href="/">Pedir</a>
-            <a href="/cocina" class="active">Cocina</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/transacciones">Transacciones</a>
-            <a href="/antifraude">Antifraude</a>
-            <a href="/laboratorio">Laboratorio de complejidad</a>
-            <a href="/logs">Logs</a>
-        </div>
+{% block titulo %}Cocina - Appresso Food{% endblock %}
 
-        <div class="content-grid">
-            <div class="panel">
-                <h2>Cola de pedidos pendientes (FIFO)</h2>
-                <p class="subtitle">El primero que entra es el primero que se atiende, sin importar el canal.</p>
-                <form method="post" action="/cocina/atender">
-                    <button type="submit" class="primary-btn" {% if not pending_orders %}disabled{% endif %}>Atender siguiente de la cola</button>
-                </form>
-                <div class="queue-list">
-                    {% for order in pending_orders %}
-                    <div class="queue-item">
-                        <span><span class="position">#{{ loop.index }}</span>Pedido {{ order.order_id }} &middot; {{ order.client }} &middot; {{ order.channel }}</span>
-                        <strong>${{ "{:,.0f}".format(order.total) }}</strong>
-                    </div>
-                    {% else %}
-                    <p class="subtitle">No hay pedidos pendientes.</p>
-                    {% endfor %}
-                </div>
-            </div>
+{% block contenido %}
+<p class="eyebrow">Operación de cocina</p>
 
-            <div class="panel">
-                <h2>Heap de despacho de domicilios</h2>
-                <p class="subtitle">La raíz del heap siempre es el barrio más cercano, sin importar el orden de llegada.</p>
-                <form method="post" action="/cocina/despachar">
-                    <button type="submit" class="primary-btn" {% if not dispatch_list %}disabled{% endif %}>Despachar el más prioritario</button>
-                </form>
-                <div class="dispatch-list">
-                    {% for entry in dispatch_list %}
-                    <div class="dispatch-item">
-                        <span><span class="position">#{{ loop.index }}</span>Pedido {{ entry.order_id }} &middot; {{ entry.client }} &middot; {{ entry.neighborhood }}</span>
-                        <strong>{{ "%.1f"|format(entry.distance_km) }} km</strong>
-                    </div>
-                    {% else %}
-                    <p class="subtitle">No hay domicilios en espera.</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <div class="panel" style="margin-top: 18px;">
-            <h2>Deshacer (pila LIFO)</h2>
-            <p class="subtitle">
-                {% if undo_preview %}
-                Última acción registrada: <strong>{{ undo_preview.kind }}</strong> sobre el pedido #{{ undo_preview.order_id }}.
-                {% else %}
-                No hay acciones para deshacer.
-                {% endif %}
-            </p>
-            <form method="post" action="/cocina/deshacer">
-                <button type="submit" class="button danger" {% if not undo_preview %}disabled{% endif %}>Deshacer última acción</button>
+    <div class="content-grid">
+        <div class="panel">
+            <h2>Cola de pedidos pendientes (FIFO)</h2>
+            <p class="subtitle">El primero que entra es el primero que se atiende, sin importar el canal.</p>
+            <form method="post" action="/cocina/atender">
+                <button type="submit" class="primary-btn" {% if not pending_orders %}disabled{% endif %}>Atender siguiente de la cola</button>
             </form>
+            <div class="queue-list">
+                {% for order in pending_orders %}
+                <div class="queue-item">
+                    <span><span class="position">#{{ loop.index }}</span>Pedido {{ order.order_id }} &middot; {{ order.client }} &middot; {{ order.channel }}</span>
+                    <strong>${{ "{:,.0f}".format(order.total) }}</strong>
+                </div>
+                {% else %}
+                <p class="subtitle">No hay pedidos pendientes.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>Heap de despacho de domicilios</h2>
+            <p class="subtitle">La raíz del heap siempre es el barrio más cercano, sin importar el orden de llegada.</p>
+            <form method="post" action="/cocina/despachar">
+                <button type="submit" class="primary-btn" {% if not dispatch_list %}disabled{% endif %}>Despachar el más prioritario</button>
+            </form>
+            <div class="dispatch-list">
+                {% for entry in dispatch_list %}
+                <div class="dispatch-item">
+                    <span><span class="position">#{{ loop.index }}</span>Pedido {{ entry.order_id }} &middot; {{ entry.client }} &middot; {{ entry.neighborhood }}</span>
+                    <strong>{{ "%.1f"|format(entry.distance_km) }} km</strong>
+                </div>
+                {% else %}
+                <p class="subtitle">No hay domicilios en espera.</p>
+                {% endfor %}
+            </div>
         </div>
     </div>
-</body>
-</html>
+
+    <div class="panel" style="margin-top: 18px;">
+        <h2>Deshacer (pila LIFO)</h2>
+        <p class="subtitle">
+            {% if undo_preview %}
+            Última acción registrada: <strong>{{ undo_preview.kind }}</strong> sobre el pedido #{{ undo_preview.order_id }}.
+            {% else %}
+            No hay acciones para deshacer.
+            {% endif %}
+        </p>
+        <form method="post" action="/cocina/deshacer">
+            <button type="submit" class="button danger" {% if not undo_preview %}disabled{% endif %}>Deshacer última acción</button>
+        </form>
+    </div>
+{% endblock %}

@@ -1,0 +1,13 @@
+<div class="domicilios">
+  <div class="panel mapa-caja">
+    <svg class="mapa" id="mapa-domicilios" viewBox="0 0 1000 700" role="img" aria-label="Mapa de barrios con las vías desde el restaurante"></svg>
+  </div>
+  <div class="panel ruta-panel">
+    <div class="field-group">
+      <label for="barrio-consulta">¿A qué barrio llevamos el pedido?</label>
+      <select id="barrio-consulta"></select>
+    </div>
+    <div id="ruta-resultado" aria-live="polite"></div>
+    <p class="subtitle">Cada barrio es un nodo y cada vía una arista con su distancia en km. Con Dijkstra calculamos el camino más corto desde el restaurante. Un barrio fuera del grafo se rechaza por falta de cobertura.</p>
+  </div>
+</div>

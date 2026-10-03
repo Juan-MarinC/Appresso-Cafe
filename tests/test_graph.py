@@ -1,6 +1,6 @@
 import unittest
 
-from appresso_food.graph import DeliveryGraph
+from appresso_food.nucleo.graph import DeliveryGraph
 
 
 class DeliveryGraphTest(unittest.TestCase):

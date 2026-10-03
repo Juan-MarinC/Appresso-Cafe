@@ -6,7 +6,7 @@ Uso (con la app corriendo):
     python tests/prueba_profesor.py URL --key mi_llave_privada_123
 
 Solo usa la biblioteca estándar. Crea y borra su propio producto (no toca el menú real) y deja
-transacciones de prueba en MongoDB (las ve en /antifraude; se borran con tests/e2e_fraud_http.py --clean).
+transacciones de prueba en la base (MongoDB o memoria) (las ve en /antifraude; se borran con tests/e2e_fraud_http.py --clean).
 Cada línea muestra el `id` de la petición: búsquelo en /logs para ver qué respondió la app y por qué.
 """
 
@@ -57,8 +57,19 @@ def check(name, result, status, motivo=None, needs_message=True):
     return body
 
 
+def accepted(name, result, status=201):
+    """201 y además aceptada (VALID o SUSPICIOUS): con rejected_as_201 una errónea también responde 201."""
+    body = check(name, result, status)
+    good = isinstance(body, dict) and body.get("estado") in ("VALID", "SUSPICIOUS")
+    if not good:
+        FAILED.append(name + " (quedó como errónea)")
+        motivo = body.get("motivo") if isinstance(body, dict) else ""
+        print(f"  FALLA {name} quedó como errónea: {motivo}")
+    return body
+
+
 def tx(n, **over):
-    t = {"idTxn": f"PROF{RUN}-{n}", "user": f"profe{RUN}@correo.com", "date": "2026-10-03T10:30:0%d.120" % n,
+    t = {"idTxn": f"PROF{RUN}-{n}", "user": f"profe{RUN}@correo.com", "date": "2026-10-03T10:30:%02d.120" % n,
          "value": 50000, "paymentMethod": "Tarjeta"}
     t.update(over)
     return t
@@ -70,7 +81,14 @@ def main():
     if status != 200:
         sys.exit(f"No se pudo conectar con {BASE}/api/health ({status}). ¿Está corriendo la app / el túnel?")
     mongo_ok = health.get("mongodb") == "ok"
-    print(f"  MongoDB: {health.get('mongodb')}" + ("" if mongo_ok else f" ({health.get('detalle')}); se omiten las pruebas de transacciones"))
+    print(f"  MongoDB: {health.get('mongodb')}" + ("" if mongo_ok else " (los datos de las pruebas de transacciones quedan solo en memoria)"))
+    # Con APPRESSO_REJECTED_AS_201=true (por defecto) una transacción recibida que queda RECHAZADA responde 201
+    # (el resultado va en el cuerpo); con false responde 422 / 400. Se toma de /api/config.
+    _, cfg, _ = call("GET", "/api/config")
+    as_201 = bool(isinstance(cfg, dict) and cfg.get("rejected_as_201"))
+    lenient = bool(isinstance(cfg, dict) and cfg.get("lenient_inputs"))
+    REJ, BAD = (201, 201) if as_201 else (422, 400)
+    print(f"  Rechazadas responden {REJ}/{BAD} (rejected_as_201={as_201}); modo generador externo: {lenient}")
 
     print("\n== Hash HMAC-SHA256 (diapositiva) ==")
     slide = {"id": 1001, "producto": "Mouse", "cantidad": 4, "valor": 50000}
@@ -82,7 +100,7 @@ def main():
     check("verificar: sin hash", call("POST", "/api/hash/verificar", slide), 422, "HASH_REQUERIDO")
     check("verificar: hash mal formado", call("POST", "/api/hash/verificar", dict(slide, hash="abc")), 422, "INVALID_HASH_FORMAT")
 
-    if mongo_ok:
+    if True:  # funciona con MongoDB o en modo memoria
         print("\n== POST /api/transactions ==")
         t = tx(1)
         check("transacción firmada con la llave de la clase", call("POST", "/api/transactions", dict(t, hash=sign(t))), 201)
@@ -91,17 +109,39 @@ def main():
         t = tx(3)
         check("sin hash: el servidor lo genera", call("POST", "/api/transactions", t), 201)
         t = tx(4)
-        body = check("datos alterados -> HASH_MISMATCH", call("POST", "/api/transactions", dict(t, value=1, hash=sign(t))), 422, "HASH_MISMATCH")
+        body = check("datos alterados -> HASH_MISMATCH (REJECTED)", call("POST", "/api/transactions", dict(t, value=1, hash=sign(t))), REJ, "HASH_MISMATCH")
         check("   y explica la causa", (200 if body.get("diagnostico_hash") else 0, {"ok": True}, None), 200)
+        check("   y queda clasificada como REJECTED", (200 if body.get("estado") == "REJECTED" else 0, {"ok": True}, None), 200)
         t = tx(5)
-        body = check("firmada con otra llave -> explica cuál", call("POST", "/api/transactions", dict(t, hash=sign(t, b"otra_llave"))), 422, "HASH_MISMATCH")
+        check("firmada con otra llave -> explica cuál", call("POST", "/api/transactions", dict(t, hash=sign(t, b"otra_llave"))), REJ, "HASH_MISMATCH")
         t = tx(6, idTxn=f"PROF{RUN}-1")
         check("ID duplicado", call("POST", "/api/transactions", t), 409, "DUPLICATE_TRANSACTION")
-        check("valor 'abc' (nunca 0)", call("POST", "/api/transactions", tx(7, value="abc")), 422, "INVALID_VALUE")
-        body = check("faltan campos -> dice qué se espera", call("POST", "/api/transactions", {"id": 1}), 422, "NULL_FIELD")
+        check("valor 'abc' (nunca 0)", call("POST", "/api/transactions", tx(7, value="abc")), REJ, "INVALID_VALUE")
+        body = check("faltan campos -> dice qué se espera", call("POST", "/api/transactions", {"id": 1}), REJ, "NULL_FIELD")
         check("   y trae el formato esperado", (200 if "formato_esperado" in body else 0, {"ok": True}, None), 200)
-        check("JSON mal formado", call("POST", "/api/transactions", raw=b'{"idTxn": 1,'), 400, "MALFORMED_JSON")
-        check("cuerpo vacío", call("POST", "/api/transactions", raw=b""), 400, "MALFORMED_JSON")
+        body = check("JSON mal formado", call("POST", "/api/transactions", raw=b'{"idTxn": 1,'), BAD, "MALFORMED_JSON")
+        check("   y queda en la cuarentena", (200 if body.get("id_invalida") else 0, {"ok": True}, None), 200)
+        check("cuerpo vacío", call("POST", "/api/transactions", raw=b""), BAD, "MALFORMED_JSON")
+
+        print("\n== Formatos de un generador externo ==")
+        accepted("rutas alias /api/transacciones", call("POST", "/api/transacciones", tx(8)), 201)
+        accepted("ruta alias /transacciones", call("POST", "/transacciones", tx(9, idTxn=f"PROF{RUN}-9")), 201)
+        t = tx(10, idTxn=f"PROF{RUN}-10")
+        accepted("UTF-8 con BOM", call("POST", "/api/transactions", raw=b"\xef\xbb\xbf" + json.dumps(t).encode()), 201)
+        t = tx(11, idTxn=f"PROF{RUN}-11")
+        accepted("UTF-16 (PowerShell)", call("POST", "/api/transactions", raw=json.dumps(t).encode("utf-16")), 201)
+        accepted("JSON doblemente codificado", call("POST", "/api/transactions", raw=json.dumps(json.dumps(tx(12, idTxn=f"PROF{RUN}-12"))).encode()), 201)
+        body = check("lote de 3 (una lista)", call("POST", "/api/transactions", [tx(13, idTxn=f"PROF{RUN}-13"), tx(14, idTxn=f"PROF{RUN}-14"), tx(15, idTxn=f"PROF{RUN}-15", value=None)]), 201)
+        check("   y el lote separa buenas de erróneas", (200 if (body.get("aceptadas"), body.get("rechazadas")) == (2, 1) else 0, {"ok": True}, None), 200)
+        if lenient:
+            t = tx(16, idTxn=f"PROF{RUN}-16", user="25", paymentMethod="Crédito")
+            accepted("user como id y método libre", call("POST", "/api/transactions", t), 201)
+            t = tx(17, idTxn=f"PROF{RUN}-17")
+            plano = hashlib.sha256(json.dumps(t, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            accepted("hash SHA-256 sin llave", call("POST", "/api/transactions", dict(t, hash=plano)), 201)
+
+        print("\n== Cuarentena y consultas ==")
+        check("listar peticiones erróneas", call("GET", "/api/transactions/invalid"), 200, needs_message=False)
         check("consultar historial", call("GET", f"/api/transactions?usuario=profe{RUN}@correo.com"), 200, needs_message=False)
         check("verificar integridad guardada", call("GET", f"/api/transactions/PROF{RUN}-1/verify"), 200, needs_message=False)
         check("ventana deslizante", call("GET", "/api/window"), 200, needs_message=False)

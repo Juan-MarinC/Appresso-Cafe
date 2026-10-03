@@ -1,58 +1,39 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ client }} - Appresso Food</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-</head>
-<body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">Appresso <span>Food</span></div>
-            <div class="badge">Historial de cliente</div>
-        </div>
+{% extends "base.html" %}
+{% set pagina = "pedir" %}
 
-        <div class="navbar">
-            <a href="/">Pedir</a>
-            <a href="/cocina">Cocina</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/transacciones">Transacciones</a>
-            <a href="/antifraude">Antifraude</a>
-            <a href="/laboratorio">Laboratorio de complejidad</a>
-            <a href="/logs">Logs</a>
-        </div>
+{% block titulo %}{{ client }} - Appresso Food{% endblock %}
 
-        <div class="panel">
-            <h1>{{ client }}</h1>
-            <p class="subtitle">Historial de pedidos y proyección de fidelización.</p>
-            <table>
-                <tr><th>Pedido</th><th>Canal</th><th>Unidades</th><th>Total</th><th>Estado</th></tr>
-                {% for order in history %}
-                <tr>
-                    <td>#{{ order.order_id }}</td>
-                    <td>{{ order.channel }}</td>
-                    <td>{{ order.total_quantity }}</td>
-                    <td>${{ "{:,.0f}".format(order.total) }}</td>
-                    <td>{{ order.status }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5">Este cliente todavía no tiene pedidos.</td></tr>
-                {% endfor %}
-            </table>
-        </div>
+{% block contenido %}
+<p class="eyebrow">Historial de cliente</p>
 
-        {% if progression %}
-        <div class="panel" style="margin-top: 18px;">
-            <h2>Fidelización (progresión aritmética)</h2>
-            <p class="subtitle">Incremento estimado por pedido: <strong>{{ difference }}</strong> unidades &middot; Progresión: {{ progression | join(' -> ') }}</p>
-            <ul class="growth-list">
-                <li><span>42 unidades</span><strong>{{ growth_weeks.get(42, 'N/A') }} pedidos</strong></li>
-                <li><span>72 unidades</span><strong>{{ growth_weeks.get(72, 'N/A') }} pedidos</strong></li>
-                <li><span>120 unidades</span><strong>{{ growth_weeks.get(120, 'N/A') }} pedidos</strong></li>
-            </ul>
-        </div>
-        {% endif %}
+    <div class="panel">
+        <h1>{{ client }}</h1>
+        <p class="subtitle">Historial de pedidos y proyección de fidelización.</p>
+        <table>
+            <tr><th>Pedido</th><th>Canal</th><th>Unidades</th><th>Total</th><th>Estado</th></tr>
+            {% for order in history %}
+            <tr>
+                <td>#{{ order.order_id }}</td>
+                <td>{{ order.channel }}</td>
+                <td>{{ order.total_quantity }}</td>
+                <td>${{ "{:,.0f}".format(order.total) }}</td>
+                <td>{{ order.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5">Este cliente todavía no tiene pedidos.</td></tr>
+            {% endfor %}
+        </table>
     </div>
-</body>
-</html>
+
+    {% if progression %}
+    <div class="panel" style="margin-top: 18px;">
+        <h2>Fidelización (progresión aritmética)</h2>
+        <p class="subtitle">Incremento estimado por pedido: <strong>{{ difference }}</strong> unidades &middot; Progresión: {{ progression | join(' -> ') }}</p>
+        <ul class="growth-list">
+            <li><span>42 unidades</span><strong>{{ growth_weeks.get(42, 'N/A') }} pedidos</strong></li>
+            <li><span>72 unidades</span><strong>{{ growth_weeks.get(72, 'N/A') }} pedidos</strong></li>
+            <li><span>120 unidades</span><strong>{{ growth_weeks.get(120, 'N/A') }} pedidos</strong></li>
+        </ul>
+    </div>
+    {% endif %}
+{% endblock %}

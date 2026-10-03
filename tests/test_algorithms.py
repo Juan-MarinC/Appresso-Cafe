@@ -1,8 +1,8 @@
 import unittest
 
-from appresso_food.algorithms import find_order_linear, recursive_total_units, total_units_sold
-from appresso_food.counter import OperationCounter
-from appresso_food.models import Order, OrderItem
+from appresso_food.nucleo.algorithms import find_order_linear, recursive_total_units, total_units_sold
+from appresso_food.nucleo.counter import OperationCounter
+from appresso_food.nucleo.models import Order, OrderItem
 
 
 def make_order(order_id: int, quantities: list[int]) -> Order:

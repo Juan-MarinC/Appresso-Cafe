@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#75383f">
+  <title>{% block titulo %}Appresso Food{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT@9..144,600..900,0..100&display=swap">
+  <link rel="stylesheet" href="/static/css/app.css">
+  {% block estilos %}{% endblock %}
+</head>
+<body>
+  {% set menu = [
+    ('pedir', '/', 'Pedir'),
+    ('cocina', '/cocina', 'Cocina'),
+    ('dashboard', '/dashboard', 'Dashboard'),
+    ('transacciones', '/transacciones', 'Transacciones'),
+    ('antifraude', '/antifraude', 'Antifraude'),
+    ('laboratorio', '/laboratorio', 'Laboratorio'),
+    ('logs', '/logs', 'Logs'),
+  ] %}
+  <header class="barra">
+    <div class="barra__fila">
+      <a class="marca" href="/" aria-label="Appresso Food, ir al inicio">
+        <strong>Appresso <span>Food</span></strong>
+        <small>Comida rápida · local y domicilios</small>
+      </a>
+      <button class="menu-movil" id="menu-movil" type="button" aria-expanded="false" aria-controls="nav" aria-label="Menú">&#9776;</button>
+      <nav class="nav" id="nav" aria-label="Principal">
+        {% for clave, ruta, texto in menu %}
+        <a href="{{ ruta }}" {% if clave == pagina %}aria-current="page"{% endif %}>{{ texto }}</a>
+        {% endfor %}
+      </nav>
+    </div>
+  </header>
+
+  {% block hero %}{% endblock %}
+
+  <main class="shell" id="contenido">
+    {% block contenido %}{% endblock %}
+  </main>
+
+  <footer class="pie">
+    <div class="pie__fila">
+      <strong>Appresso Food</strong>
+      <span>Proyecto académico de Programación Avanzada · pagos simulados, no se cobra dinero real.</span>
+    </div>
+  </footer>
+
+  <script src="/static/js/nav.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

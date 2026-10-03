@@ -1,79 +1,60 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Laboratorio de complejidad - Appresso Food</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-</head>
-<body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">Appresso <span>Food</span></div>
-            <div class="badge">Big O &middot; Complejidad computacional</div>
-        </div>
+{% extends "base.html" %}
+{% set pagina = "laboratorio" %}
 
-        <div class="navbar">
-            <a href="/">Pedir</a>
-            <a href="/cocina">Cocina</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/transacciones">Transacciones</a>
-            <a href="/antifraude">Antifraude</a>
-            <a href="/laboratorio" class="active">Laboratorio de complejidad</a>
-            <a href="/logs">Logs</a>
-        </div>
+{% block titulo %}Laboratorio de complejidad - Appresso Food{% endblock %}
 
-        <div class="panel">
-            <p class="eyebrow">Programación avanzada</p>
-            <h1>Laboratorio de algoritmos</h1>
-            <p class="subtitle">
-                Genera pedidos sintéticos (no se guardan en la base de datos) y mide cuántas operaciones
-                hacen los algoritmos de búsqueda, suma y recursividad cuando crece el tamaño de la entrada n.
-            </p>
+{% block contenido %}
+<p class="eyebrow">Big O &middot; Complejidad computacional</p>
 
-            <form method="post" action="/laboratorio">
-                <div class="field-group">
-                    <label for="size">Cantidad de pedidos de prueba (n)</label>
-                    <select name="size" id="size">
-                        <option value="10">10</option>
-                        <option value="100" selected>100</option>
-                        <option value="1000">1.000</option>
-                        <option value="10000">10.000</option>
-                        <option value="25000">25.000</option>
-                    </select>
-                </div>
-                <button type="submit" class="primary-btn">Ejecutar algoritmos</button>
-            </form>
-        </div>
+    <div class="panel">
+        <p class="eyebrow">Programación avanzada</p>
+        <h1>Laboratorio de algoritmos</h1>
+        <p class="subtitle">
+            Genera pedidos sintéticos (no se guardan en la base de datos) y mide cuántas operaciones
+            hacen los algoritmos de búsqueda, suma y recursividad cuando crece el tamaño de la entrada n.
+        </p>
 
-        {% if result %}
-        <div class="summary" style="margin-top: 20px;">
-            <div class="card accent">
-                <div class="label">Búsqueda lineal O(n)</div>
-                <div class="value">{{ result.find_ops }}</div>
-                <small>comparaciones para ubicar un pedido.</small>
+        <form method="post" action="/laboratorio">
+            <div class="field-group">
+                <label for="size">Cantidad de pedidos de prueba (n)</label>
+                <select name="size" id="size">
+                    <option value="10">10</option>
+                    <option value="100" selected>100</option>
+                    <option value="1000">1.000</option>
+                    <option value="10000">10.000</option>
+                    <option value="25000">25.000</option>
+                </select>
             </div>
-            <div class="card">
-                <div class="label">Suma de unidades O(n)</div>
-                <div class="value">{{ result.total_ops }}</div>
-                <small>sumas acumuladas.</small>
-            </div>
-            <div class="card">
-                <div class="label">Recursividad</div>
-                <div class="value">{{ result.rec_calls }}</div>
-                <small>llamadas (divide y vencerás, O(log n) de profundidad).</small>
-            </div>
-            <div class="card">
-                <div class="label">Tiempo real</div>
-                <div class="value">{{ "%.2f"|format(result.elapsed_ms) }} ms</div>
-                <small>para n = {{ result.size }} pedidos.</small>
-            </div>
-        </div>
-
-        <div class="actions">
-            <a class="button secondary" href="/download/operation_counts.csv">Descargar CSV</a>
-        </div>
-        {% endif %}
+            <button type="submit" class="primary-btn">Ejecutar algoritmos</button>
+        </form>
     </div>
-</body>
-</html>
+
+    {% if result %}
+    <div class="summary" style="margin-top: 20px;">
+        <div class="card accent">
+            <div class="label">Búsqueda lineal O(n)</div>
+            <div class="value">{{ result.find_ops }}</div>
+            <small>comparaciones para ubicar un pedido.</small>
+        </div>
+        <div class="card">
+            <div class="label">Suma de unidades O(n)</div>
+            <div class="value">{{ result.total_ops }}</div>
+            <small>sumas acumuladas.</small>
+        </div>
+        <div class="card">
+            <div class="label">Recursividad</div>
+            <div class="value">{{ result.rec_calls }}</div>
+            <small>llamadas (divide y vencerás, O(log n) de profundidad).</small>
+        </div>
+        <div class="card">
+            <div class="label">Tiempo real</div>
+            <div class="value">{{ "%.2f"|format(result.elapsed_ms) }} ms</div>
+            <small>para n = {{ result.size }} pedidos.</small>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a class="button secondary" href="/download/operation_counts.csv">Descargar CSV</a>
+    </div>
+    {% endif %}
+{% endblock %}

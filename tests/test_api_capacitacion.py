@@ -11,12 +11,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from appresso_food import fraud_hashing as hashing
-from appresso_food import http_log, productos_api, storage
-from appresso_food.api_helpers import verify_hash
-from appresso_food.capacitacion_api import calculate_total
-from appresso_food.fraud_config import DEFAULT_SECRET, FraudConfig
-from appresso_food.models import OrderItem, Order
+from appresso_food.antifraude import fraud_hashing as hashing
+from appresso_food.api import http_log
+from appresso_food.api import productos_api
+from appresso_food.nucleo import storage
+from appresso_food.api.api_helpers import verify_hash
+from appresso_food.api.capacitacion_api import calculate_total
+from appresso_food.antifraude.fraud_config import DEFAULT_SECRET, FraudConfig
+from appresso_food.nucleo.models import OrderItem, Order
 
 
 def class_hash(payload, key=DEFAULT_SECRET.encode()):

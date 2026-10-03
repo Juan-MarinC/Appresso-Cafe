@@ -1,78 +1,65 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Logs - Appresso Food</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <link rel="stylesheet" href="/static/antifraude.css" />
-</head>
-<body>
-    <div class="shell">
-        <div class="topbar">
-            <div class="brand">Appresso <span>Food</span></div>
-            <div class="badge">Logs en vivo</div>
-        </div>
+{% extends "base.html" %}
+{% set pagina = "logs" %}
 
-        <div class="navbar">
-            <a href="/">Pedir</a>
-            <a href="/cocina">Cocina</a>
-            <a href="/dashboard">Dashboard</a>
-            <a href="/transacciones">Transacciones</a>
-            <a href="/antifraude">Antifraude</a>
-            <a href="/laboratorio">Laboratorio de complejidad</a>
-            <a href="/logs" class="active">Logs</a>
-        </div>
+{% block titulo %}Logs - Appresso Food{% endblock %}
 
-        <div class="stack fx">
-            <div class="panel">
-                <p class="eyebrow">Qué está pasando con la app</p>
-                <h1>Peticiones recibidas <span class="live" id="live">en vivo</span></h1>
-                <p class="subtitle">
-                    Cada petición que llega (desde este equipo o por ngrok) con el método, la ruta, lo que se envió,
-                    lo que respondió la app y <strong>por qué</strong>. Haga clic en una fila para ver el detalle.
-                </p>
-                <div id="public-url" class="banner warn" hidden></div>
+{% block estilos %}
+  <link rel="stylesheet" href="/static/css/antifraude.css">
+{% endblock %}
 
-                <div class="row3">
-                    <div>
-                        <label for="f-text">Buscar</label>
-                        <input type="text" id="f-text" placeholder="ruta, mensaje, motivo, IP…" />
-                    </div>
-                    <div>
-                        <label for="f-method">Método</label>
-                        <select id="f-method"><option value="">Todos</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
-                    </div>
-                    <div>
-                        <label for="f-status">Resultado</label>
-                        <select id="f-status">
-                            <option value="">Todos</option>
-                            <option value="ok">Exitosos (2xx/3xx)</option>
-                            <option value="client">Rechazados (4xx)</option>
-                            <option value="server">Errores del servidor (5xx)</option>
-                        </select>
-                    </div>
+{% block contenido %}
+<p class="eyebrow">Logs en vivo</p>
+
+    <div class="stack fx">
+        <div class="panel">
+            <p class="eyebrow">Qué está pasando con la app</p>
+            <h1>Peticiones recibidas <span class="live" id="live">en vivo</span></h1>
+            <p class="subtitle">
+                Cada petición que llega (desde este equipo o por ngrok) con el método, la ruta, lo que se envió,
+                lo que respondió la app y <strong>por qué</strong>. Haga clic en una fila para ver el detalle.
+            </p>
+            <div id="public-url" class="banner warn" hidden></div>
+
+            <div class="row3">
+                <div>
+                    <label for="f-text">Buscar</label>
+                    <input type="text" id="f-text" placeholder="ruta, mensaje, motivo, IP…" />
                 </div>
-                <div class="btn-row">
-                    <label class="check"><input type="checkbox" id="f-auto" /> Incluir consultas automáticas de las páginas</label>
-                    <label class="check"><input type="checkbox" id="f-pause" /> Pausar</label>
-                    <button class="btn small" id="btn-clear" type="button">Limpiar pantalla</button>
+                <div>
+                    <label for="f-method">Método</label>
+                    <select id="f-method"><option value="">Todos</option><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select>
+                </div>
+                <div>
+                    <label for="f-status">Resultado</label>
+                    <select id="f-status">
+                        <option value="">Todos</option>
+                        <option value="ok">Exitosos (2xx/3xx)</option>
+                        <option value="client">Rechazados (4xx)</option>
+                        <option value="server">Errores del servidor (5xx)</option>
+                    </select>
                 </div>
             </div>
-
-            <div class="panel">
-                <div class="tscroll">
-                    <table class="tight">
-                        <thead><tr><th>Hora</th><th>Método</th><th>Ruta</th><th>Estado</th><th>Origen</th><th>Qué respondió la app</th><th class="num">ms</th></tr></thead>
-                        <tbody id="rows"><tr><td colspan="7" class="empty">Esperando peticiones…</td></tr></tbody>
-                    </table>
-                </div>
-                <p class="muted" style="font-size:12px;margin-top:10px;" id="file-note"></p>
+            <div class="btn-row">
+                <label class="check"><input type="checkbox" id="f-auto" /> Incluir consultas automáticas de las páginas</label>
+                <label class="check"><input type="checkbox" id="f-pause" /> Pausar</label>
+                <button class="btn small" id="btn-clear" type="button">Limpiar pantalla</button>
             </div>
+        </div>
+
+        <div class="panel">
+            <div class="tscroll">
+                <table class="tight">
+                    <thead><tr><th>Hora</th><th>Método</th><th>Ruta</th><th>Estado</th><th>Origen</th><th>Qué respondió la app</th><th class="num">ms</th></tr></thead>
+                    <tbody id="rows"><tr><td colspan="7" class="empty">Esperando peticiones…</td></tr></tbody>
+                </table>
+            </div>
+            <p class="muted" style="font-size:12px;margin-top:10px;" id="file-note"></p>
         </div>
     </div>
+{% endblock %}
 
-    <script>
+{% block scripts %}
+<script>
     (function () {
         const $ = (id) => document.getElementById(id);
         const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -161,5 +148,4 @@
         setInterval(poll, 2000);
     })();
     </script>
-</body>
-</html>
+{% endblock %}

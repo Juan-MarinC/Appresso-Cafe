@@ -1,6 +1,6 @@
 import unittest
 
-from appresso_food.dispatch import DispatchHeap
+from appresso_food.nucleo.dispatch import DispatchHeap
 
 
 class DispatchHeapTest(unittest.TestCase):

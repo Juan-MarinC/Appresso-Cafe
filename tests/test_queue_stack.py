@@ -1,6 +1,6 @@
 import unittest
 
-from appresso_food.queue_stack import PendingOrdersQueue, UndoAction, UndoStack
+from appresso_food.nucleo.queue_stack import PendingOrdersQueue, UndoAction, UndoStack
 
 
 class PendingOrdersQueueTest(unittest.TestCase):

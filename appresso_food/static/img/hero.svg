@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 520" role="img" aria-label="Hamburguesa, papas fritas y malteada">
+  <defs>
+    <pattern id="rayas" width="88" height="10" patternUnits="userSpaceOnUse">
+      <rect width="44" height="10" fill="#75383f"/><rect x="44" width="44" height="10" fill="#633035"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="520" fill="url(#rayas)"/>
+  <circle cx="300" cy="270" r="215" fill="#ffdb94"/>
+  <circle cx="300" cy="270" r="215" fill="none" stroke="#fff5e0" stroke-width="8" stroke-dasharray="2 18" stroke-linecap="round"/>
+  <!-- papas -->
+  <g transform="translate(95 255)">
+    <g fill="#f6b73c" stroke="#d99a1a" stroke-width="3" stroke-linejoin="round">
+      <rect x="18" y="0" width="14" height="95" rx="5" transform="rotate(-12 25 60)"/>
+      <rect x="40" y="-14" width="14" height="105" rx="5"/>
+      <rect x="62" y="0" width="14" height="95" rx="5" transform="rotate(10 69 60)"/>
+      <rect x="82" y="8" width="14" height="90" rx="5" transform="rotate(20 89 60)"/>
+    </g>
+    <path d="M0 80 L110 80 L96 190 Q55 200 14 190 Z" fill="#c62f2f" stroke="#8e1c1c" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="-4" y="72" width="118" height="16" rx="6" fill="#e04545" stroke="#8e1c1c" stroke-width="4"/>
+  </g>
+  <!-- malteada -->
+  <g transform="translate(430 190)">
+    <path d="M10 40 L100 40 L86 210 Q55 222 24 210 Z" fill="#fff5e0" stroke="#75383f" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M17 100 L93 100 L86 210 Q55 222 24 210 Z" fill="#c98b6b"/>
+    <ellipse cx="55" cy="38" rx="52" ry="14" fill="#fff" stroke="#75383f" stroke-width="5"/>
+    <path d="M12 38 Q20 -14 55 -6 Q92 -14 98 38 Z" fill="#fff" stroke="#75383f" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="55" cy="-12" r="11" fill="#d03b3b" stroke="#8e1c1c" stroke-width="3"/>
+    <rect x="62" y="-70" width="10" height="90" rx="4" fill="#ea7a4c" stroke="#96502e" stroke-width="3" transform="rotate(14 67 -25)"/>
+  </g>
+  <!-- hamburguesa -->
+  <g transform="translate(180 120)" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M10 95 Q10 5 120 5 Q230 5 230 95 Z" fill="#e8a24a" stroke="#96502e" stroke-width="6"/>
+    <g fill="#fff5e0"><ellipse cx="80" cy="38" rx="9" ry="5" transform="rotate(-20 80 38)"/><ellipse cx="125" cy="26" rx="9" ry="5"/><ellipse cx="168" cy="40" rx="9" ry="5" transform="rotate(20 168 40)"/><ellipse cx="105" cy="62" rx="9" ry="5" transform="rotate(10 105 62)"/><ellipse cx="150" cy="64" rx="9" ry="5" transform="rotate(-12 150 64)"/></g>
+    <path d="M0 108 Q20 90 40 108 T80 108 T120 108 T160 108 T200 108 T240 108 L240 126 L0 126 Z" fill="#69b34c" stroke="#3f7a2a" stroke-width="5"/>
+    <path d="M12 126 L228 126 L212 150 L120 168 L28 150 Z" fill="#ffc533" stroke="#c98d00" stroke-width="5"/>
+    <rect x="6" y="146" width="228" height="38" rx="19" fill="#5a2f22" stroke="#2e1a17" stroke-width="5"/>
+    <g fill="#e04545" stroke="#8e1c1c" stroke-width="4"><ellipse cx="62" cy="195" rx="34" ry="10"/><ellipse cx="120" cy="198" rx="34" ry="10"/><ellipse cx="178" cy="195" rx="34" ry="10"/></g>
+    <path d="M10 208 L230 208 Q230 252 120 252 Q10 252 10 208 Z" fill="#e8a24a" stroke="#96502e" stroke-width="6"/>
+  </g>
+  <!-- chispas -->
+  <g fill="#ffdb94"><circle cx="70" cy="90" r="6"/><circle cx="520" cy="70" r="8"/><circle cx="550" cy="430" r="6"/><circle cx="50" cy="440" r="8"/></g>
+</svg>
