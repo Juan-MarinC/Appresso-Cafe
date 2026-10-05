@@ -110,7 +110,7 @@ Qué debe saber el profesor:
   curl, Python `requests` y similares no la ven; en el navegador se pulsa *Visit Site*, o se envía el
   encabezado `ngrok-skip-browser-warning: 1` en las llamadas hechas por código.
 - **La URL cambia** cada vez que se reinicia ngrok (salvo que reserve un dominio gratis en el panel de ngrok).
-- Si MongoDB está apagado, las transacciones se guardan en memoria (se pierden al reiniciar) y la app avisa; productos, hash y totales siguen funcionando.
+- Si MongoDB está apagado al arrancar, las transacciones se guardan en memoria y la app avisa; si se cae con la app corriendo, responden `503` reintentable. En ambos casos se recupera sola cuando MongoDB vuelve, y productos, hash y totales siguen funcionando.
 
 ### Clientes externos: bots de Telegram, Postman, páginas web
 
@@ -268,9 +268,13 @@ docker run -d --name appresso-mongo --restart unless-stopped -p 27017:27017 -v a
 | **Dashboard antifraude** | `http://localhost:8000/antifraude` |
 | Estado de MongoDB | `http://localhost:8000/api/health` |
 
-Si MongoDB no está disponible, la app arranca igual: el módulo antifraude
-guarda en **memoria** (los datos se pierden al reiniciar), muestra un aviso y
-`/api/health` responde `"mongodb": "no disponible (modo memoria)"`.
+Si MongoDB no está disponible **al arrancar**, la app arranca igual: el módulo antifraude
+guarda en **memoria** (esos datos se pierden al reiniciar), muestra un aviso,
+`/api/health` responde `"mongodb": "no disponible (modo memoria)"` y cada 15 s reintenta
+MongoDB: cuando vuelve, se conecta sola sin reiniciar la app.
+Si MongoDB **se cae con la app corriendo**, las rutas de transacciones responden `503`
+(`MONGODB_NO_DISPONIBLE`, con `Retry-After`) en vez de un error interno, la petición no se
+guarda (se puede reenviar) y al volver MongoDB todo sigue funcionando.
 Para que otro equipo de la misma red entre, use la IP de este equipo en lugar de `localhost`
 y permita el puerto 8000 en el firewall de Windows; desde otra red, use ngrok (ver más abajo).
 

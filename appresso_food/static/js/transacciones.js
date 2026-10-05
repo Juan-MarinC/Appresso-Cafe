@@ -211,7 +211,8 @@
         ["1. Transacción correcta → VALID", () => pretty(base())],
         ["2. Campo null → NULL_FIELD", () => pretty(base({ user: null }))],
         ["3. Campo vacío → EMPTY_FIELD", () => pretty(base({ nombre: "" }))],
-        ["4. Correo inválido → INVALID_EMAIL", () => pretty(base({ user: "correo-sin-arroba" }))],
+        // Con "@" para que se valide como correo: sin "@" la API lo acepta como identificador de usuario (modo tolerante).
+        ["4. Correo inválido → INVALID_EMAIL", () => pretty(base({ user: "correo@" }))],
         ["5. Tipo incorrecto → INVALID_TYPE", () => pretty(base({ value: [50000], idTxn: true }))],
         ["6. Número como texto \"50000\" → se normaliza", () => pretty(base({ value: "50000" }))],
         ["6b. Valor \"abc\" → INVALID_VALUE (nunca 0)", () => pretty(base({ value: "abc" }))],

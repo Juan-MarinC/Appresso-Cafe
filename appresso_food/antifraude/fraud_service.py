@@ -346,73 +346,76 @@ class FraudService:
 
             user_id = self.repo.upsert_user(norm.email, norm.nombre, norm.cedula, now)
             result = self.window.add(norm.email, norm.fecha, norm.id_txn, norm.valor)  # entra + salen
-            members, count = result.members, result.count
-            if result.out_of_order:
-                # Llegó con fecha anterior a otras ya recibidas: lo que ya salió de la ventana activa pudo
-                # formar grupo con ella, así que se cuenta con el historial completo del usuario (±N s).
-                delta = self.window_delta()
-                history = self.repo.user_accepted_between(norm.email, norm.fecha - delta, norm.fecha + delta)
-                entries = [
-                    WindowEntry(ts=datetime.fromisoformat(h["fecha_txn"]), txn_id=h["id_txn"], valor=h["valor"], seq=self.window.next_seq())
-                    for h in history
-                ]
-                members = densest_window(entries + [result.entered], result.entered, delta)
-                count = len(members)
-            in_window = members
-
-            anomalies: List[dict] = []
-            if count >= self.config.max_transactions:
-                anomalies.append(
-                    self._anomaly_doc(
-                        POSSIBLE_FRAUD, "MEDIO" if count == self.config.max_transactions else "ALTO",
-                        count, self.config.window_seconds, self.config.max_transactions, norm, user_id, in_window, now,
-                    )
-                )
-
-            band_info = None
-            if self.config.band_rules_enabled:
-                band = band_for(norm.fecha, self.config.band_rules)
-                if band:
-                    name, start, end, limit = band
-                    total = self.repo.count_user_accepted_between(norm.email, start, end) + 1
-                    band_info = {"franja": name, "limite": limit, "cantidad": total}
-                    if total > limit:
-                        doc = self._anomaly_doc(
-                            TOO_MANY_TRANSACTIONS, "BAJO", total, round((end - start).total_seconds()), limit, norm, user_id, [], now,
-                        )
-                        doc["franja"] = name
-                        anomalies.append(doc)
-
-            estado = STATUS_SUSPICIOUS if anomalies else STATUS_VALID
-            motivo = anomalies[0]["tipo"] if anomalies else None
-            doc = {
-                "id_txn": norm.id_txn,
-                "usuario_id": user_id,
-                "usuario_email": norm.email,
-                "nombre_cliente": norm.nombre,
-                "cedula": norm.cedula,
-                "valor": norm.valor,
-                "fecha_txn": norm.fecha,
-                "metodo_pago": norm.metodo_pago,
-                "estado": estado,
-                "motivo": motivo,
-                "errores": [],
-                "hash": expected,
-                "hash_origen": hash_origin,
-                "hash_cliente": norm.hash_cliente,
-                "hash_verificado_sobre": hash_check.get("calculado_sobre"),
-                "aceptada": True,
-                "cantidad_ventana": count,
-                "payload_original": _clip(raw_text, MAX_PAYLOAD_CHARS),
-                "fecha_ref": norm.fecha,
-                "fecha_creacion": now,
-                "fecha_actualizacion": now,
-            }
             try:
+                members, count = result.members, result.count
+                if result.out_of_order:
+                    # Llegó con fecha anterior a otras ya recibidas: lo que ya salió de la ventana activa pudo
+                    # formar grupo con ella, así que se cuenta con el historial completo del usuario (±N s).
+                    delta = self.window_delta()
+                    history = self.repo.user_accepted_between(norm.email, norm.fecha - delta, norm.fecha + delta)
+                    entries = [
+                        WindowEntry(ts=datetime.fromisoformat(h["fecha_txn"]), txn_id=h["id_txn"], valor=h["valor"], seq=self.window.next_seq())
+                        for h in history
+                    ]
+                    members = densest_window(entries + [result.entered], result.entered, delta)
+                    count = len(members)
+                in_window = members
+
+                anomalies: List[dict] = []
+                if count >= self.config.max_transactions:
+                    anomalies.append(
+                        self._anomaly_doc(
+                            POSSIBLE_FRAUD, "MEDIO" if count == self.config.max_transactions else "ALTO",
+                            count, self.config.window_seconds, self.config.max_transactions, norm, user_id, in_window, now,
+                        )
+                    )
+
+                band_info = None
+                if self.config.band_rules_enabled:
+                    band = band_for(norm.fecha, self.config.band_rules)
+                    if band:
+                        name, start, end, limit = band
+                        total = self.repo.count_user_accepted_between(norm.email, start, end) + 1
+                        band_info = {"franja": name, "limite": limit, "cantidad": total}
+                        if total > limit:
+                            doc = self._anomaly_doc(
+                                TOO_MANY_TRANSACTIONS, "BAJO", total, round((end - start).total_seconds()), limit, norm, user_id, [], now,
+                            )
+                            doc["franja"] = name
+                            anomalies.append(doc)
+
+                estado = STATUS_SUSPICIOUS if anomalies else STATUS_VALID
+                motivo = anomalies[0]["tipo"] if anomalies else None
+                doc = {
+                    "id_txn": norm.id_txn,
+                    "usuario_id": user_id,
+                    "usuario_email": norm.email,
+                    "nombre_cliente": norm.nombre,
+                    "cedula": norm.cedula,
+                    "valor": norm.valor,
+                    "fecha_txn": norm.fecha,
+                    "metodo_pago": norm.metodo_pago,
+                    "estado": estado,
+                    "motivo": motivo,
+                    "errores": [],
+                    "hash": expected,
+                    "hash_origen": hash_origin,
+                    "hash_cliente": norm.hash_cliente,
+                    "hash_verificado_sobre": hash_check.get("calculado_sobre"),
+                    "aceptada": True,
+                    "cantidad_ventana": count,
+                    "payload_original": _clip(raw_text, MAX_PAYLOAD_CHARS),
+                    "fecha_ref": norm.fecha,
+                    "fecha_creacion": now,
+                    "fecha_actualizacion": now,
+                }
                 txn_id = self.repo.insert_transaction(doc)
             except DuplicateTransactionError:  # carrera entre procesos: el índice único manda
                 self.window.remove(norm.email, norm.id_txn)
                 return self._duplicate(raw, raw_text, norm, expected, now)
+            except Exception:  # p. ej. MongoDB se cayó: la transacción no se guardó, así que tampoco cuenta en la ventana
+                self.window.remove(norm.email, norm.id_txn)
+                raise
 
             for anomaly in anomalies:
                 anomaly["transaccion_id"] = txn_id

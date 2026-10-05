@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from urllib.parse import urlencode, urlsplit
 
-TARGET = next((a for a in sys.argv[1:] if a.startswith("http")), "http://localhost:8000").rstrip("/")
+TARGET = next((a for a in sys.argv[1:] if a.startswith("http")), "http://127.0.0.1:8000").rstrip("/")  # "localhost" tarda ~2 s en Windows
 URL = urlsplit(TARGET)
 REMOTE = "localhost" not in URL.netloc and "127.0.0.1" not in URL.netloc
 RUN = uuid.uuid4().hex[:6]

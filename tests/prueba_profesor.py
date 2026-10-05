@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
-BASE = (args[0] if args else "http://localhost:8000").rstrip("/")
+BASE = (args[0] if args else "http://127.0.0.1:8000").rstrip("/")  # en Windows "localhost" prueba IPv6 primero y tarda ~2 s por petición
 KEY = sys.argv[sys.argv.index("--key") + 1].encode() if "--key" in sys.argv else b"mi_llave_privada_123"
 RUN = uuid.uuid4().hex[:6]
 PASSED, FAILED = [], []

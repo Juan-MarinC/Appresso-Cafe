@@ -7,11 +7,13 @@ vez de dejar que el framework responda un 422 genérico.
 
 import json
 import threading
+import time
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
+from pymongo.errors import ConnectionFailure
 
 from appresso_food.antifraude.fraud_config import FraudConfig
 from appresso_food.antifraude.fraud_repo import InMemoryRepository, MongoRepository
@@ -24,11 +26,18 @@ _service: Optional[FraudService] = None
 _last_error: Optional[str] = None
 _memory_mode = False  # True si MongoDB no estaba disponible y se guarda solo en memoria
 _init_lock = threading.Lock()
+_reconnect_thread: Optional[threading.Thread] = None
+RECONNECT_SECONDS = 15  # cada cuánto se reintenta MongoDB mientras la app está en modo memoria
+
+
+def _describe(exc: Exception) -> str:
+    return f"{type(exc).__name__}: {str(exc).splitlines()[0][:160]}"
 
 
 def init_fraud(force: bool = False) -> Optional[FraudService]:
     """Conecta con MongoDB y arranca el servicio. Si MongoDB no está disponible se usa un repositorio en
-    memoria (los datos se pierden al reiniciar) para que el endpoint siga recibiendo transacciones."""
+    memoria (los datos se pierden al reiniciar) para que el endpoint siga recibiendo transacciones, y en
+    segundo plano se reintenta MongoDB hasta que vuelva."""
     global _service, _last_error, _memory_mode
     with _init_lock:
         if _service is not None and not force:
@@ -41,15 +50,58 @@ def init_fraud(force: bool = False) -> Optional[FraudService]:
             _memory_mode, _last_error = False, None
         except Exception as exc:  # noqa: BLE001 - se informa tal cual al usuario
             repo = InMemoryRepository()
-            _memory_mode, _last_error = True, f"{type(exc).__name__}: {str(exc).splitlines()[0][:160]}"
+            _memory_mode, _last_error = True, _describe(exc)
         service = FraudService(config, repo, file_logger=file_logger)
         service.startup()
         _service = service
-        return _service
+    if _memory_mode:
+        _start_reconnect_thread()
+    return _service
+
+
+def try_reconnect() -> bool:
+    """Si MongoDB ya responde, cambia el servicio de memoria a MongoDB. Lo recibido en memoria no se copia."""
+    global _service, _last_error, _memory_mode
+    config = FraudConfig.from_env()
+    try:
+        repo = MongoRepository(config.mongo_uri, config.mongo_db)
+        repo.ping()
+    except Exception as exc:  # noqa: BLE001
+        _last_error = _describe(exc)
+        return False
+    service = FraudService(config, repo, file_logger=build_file_logger(BASE_DIR.parent / "logs" / "fraud.log"))
+    service.startup()
+    with _init_lock:
+        _service, _memory_mode, _last_error = service, False, None
+    return True
+
+
+def _reconnect_loop() -> None:
+    while _memory_mode:
+        time.sleep(RECONNECT_SECONDS)
+        if try_reconnect():
+            return
+
+
+def _start_reconnect_thread() -> None:
+    global _reconnect_thread
+    if _reconnect_thread is None or not _reconnect_thread.is_alive():
+        _reconnect_thread = threading.Thread(target=_reconnect_loop, name="reconexion-mongodb", daemon=True)
+        _reconnect_thread.start()
 
 
 def get_service() -> FraudService:
     return _service or init_fraud()
+
+
+async def mongo_unavailable_handler(request: Request, exc: ConnectionFailure) -> JSONResponse:
+    """MongoDB se cayó con la app corriendo: en vez de un 500 genérico, un 503 claro y reintentable.
+    La petición NO se guardó (ni cuenta en la ventana), así que el cliente puede reenviarla."""
+    message = ("La base de datos (MongoDB) no responde en este momento y la petición no se guardó. "
+               "Reintente en unos segundos; si persiste, revise que MongoDB esté corriendo.")
+    body = {"ok": False, "motivo": "MONGODB_NO_DISPONIBLE", "mensaje": message, "detail": message,
+            "error": _describe(exc), "request_id": getattr(request.state, "request_id", None)}
+    return JSONResponse(body, status_code=503, headers={"Retry-After": "10"})
 
 
 def _limit(value: int, default: int = 100) -> int:
@@ -235,5 +287,12 @@ def public_config():
 
 @router.get("/api/health")
 def health():
+    """Consulta MongoDB de verdad (antes respondía "ok" aunque MongoDB se hubiera caído después de arrancar)."""
     service = _service or init_fraud()
-    return {"mongodb": "no disponible (modo memoria)" if _memory_mode else "ok", "detalle": _last_error}
+    if _memory_mode:
+        return {"mongodb": "no disponible (modo memoria)", "detalle": _last_error}
+    try:
+        service.repo.ping()
+    except Exception as exc:  # noqa: BLE001
+        return {"mongodb": "no disponible", "detalle": _describe(exc) + " — las transacciones responden 503 hasta que vuelva"}
+    return {"mongodb": "ok", "detalle": None}

@@ -27,7 +27,8 @@
 - Panel "Peticiones erróneas en cuarentena": ver original, reprocesar, descartar, filtrar por estado.
 
 ## 5. Pruebas
-- `python -m unittest discover -s tests` → 115 pruebas (antes 101). Nuevas en `tests/test_invalid_flow.py` y `tests/test_external_clients.py`.
+- `python -m unittest discover -s tests` → 121 pruebas (antes 101). Nuevas en `tests/test_invalid_flow.py`, `tests/test_external_clients.py` y `tests/test_mongo_resilience.py`.
+- Los scripts contra la app (`prueba_profesor.py`, `prueba_clientes_externos.py`, `e2e_fraud_http.py`) usan `http://127.0.0.1:8000` por defecto: en Windows `localhost` prueba IPv6 primero y cada petición tardaba ~2 s.
 
 ## 6. Clientes externos (ngrok, bots de Telegram, Postman, páginas web)
 - `api/compat.py`: CORS (orígenes en `APPRESSO_CORS_ORIGINS`, por defecto `*`) y `HEAD` respondido como `GET`. Antes una página de otro dominio quedaba bloqueada por el navegador y `HEAD` daba 405.
@@ -41,8 +42,16 @@
 - Por un túnel público real: `prueba_profesor.py` 58/58 y `prueba_clientes_externos.py` 35/35, sin errores 500.
 - `tests/e2e_fraud_http.py` pasa 31/31 en modo estricto (`APPRESSO_REJECTED_AS_201=false` y `APPRESSO_LENIENT_INPUTS=false`).
 
-## Pendiente / a tener en cuenta
-- En modo tolerante un `user` sin "@" se acepta como identificador: el caso precargado "4. Correo inválido" del formulario (`static/js/transacciones.js`) sale VALID. Se corrige usando un correo con "@" mal formado, p. ej. `"correo@"`.
-- `docs/PRUEBA_CON_IA.md` aún espera 400/422 en algunos casos; con la configuración por defecto la app responde 201 con `REJECTED`.
-- `docs/CAMBIOS.txt` es una copia de este archivo.
+## 8. MongoDB que se cae o tarda en arrancar
+- Si se cae con la app corriendo: las rutas de transacciones responden `503 MONGODB_NO_DISPONIBLE` con `Retry-After: 10` (antes, `500 ERROR_INTERNO`). La petición no se guarda ni queda contada en la ventana deslizante, así que se puede reenviar.
+- `/api/health` consulta MongoDB de verdad (antes decía "ok" aunque se hubiera caído).
+- Si la app arrancó sin MongoDB (modo memoria), reintenta cada 15 s y se conecta sola cuando vuelve, sin reiniciarla. Lo recibido en memoria no se copia a MongoDB.
+- Probado en vivo deteniendo y arrancando el contenedor `appresso-mongo`.
+
+## 9. Ajustes de documentación y formulario
+- Caso precargado "4. Correo inválido" usa `"correo@"`: da `INVALID_EMAIL` en ambos modos (un `user` sin "@" es un identificador válido en modo tolerante).
+- `docs/PRUEBA_CON_IA.md` espera los códigos actuales: 201 con `REJECTED` en los rechazos, 409 solo en el duplicado y 503 si MongoDB se cae.
+- Se eliminó `docs/CAMBIOS.txt`, que era una copia exacta de este archivo.
+
+## A tener en cuenta
 - Se pueden borrar a mano (sobran): `.system_generated/`, `logs/`, `appresso_food/appresso_food.db` (se recrea sola).

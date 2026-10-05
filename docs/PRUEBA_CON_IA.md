@@ -47,18 +47,26 @@ Usa un correo DISTINTO y nuevo para cada caso, salvo donde se indique lo contrar
 unas pruebas no contaminen a otras. Para cada caso anota: lo que hiciste, el resultado real y
 si coincide con lo esperado.
 
+Códigos HTTP (configuración por defecto): toda petición recibida responde HTTP 201 y el
+resultado va en el cuerpo: estado VALID, SUSPICIOUS o REJECTED. Una REJECTED trae además
+"clasificacion": "ERRONEA", el código original en "http_original" (422 datos inválidos, 400
+cuerpo mal formado) y queda en la cuarentena. La ÚNICA excepción es el ID repetido: HTTP 409.
+Un 201 con estado REJECTED NO es una falla de la app: es el comportamiento esperado.
+
 CASOS
 1. Transacción correcta (formulario, valores por defecto). Esperado: estado VALID, HTTP 201,
    hash de 64 caracteres hexadecimales, ventana 1 de 3.
-2. Campo null (caso precargado "2. Campo null"). Esperado: REJECTED, motivo NULL_FIELD.
-3. Campo vacío (caso 3). Esperado: REJECTED, EMPTY_FIELD.
-4. Correo inválido: con el formulario normal sin "Modo prueba", escribe "sin-arroba": debe
-   bloquearse en el navegador con un mensaje. Luego marca "Modo prueba" y envía: el backend
-   debe responder REJECTED, INVALID_EMAIL.
-5. Tipo incorrecto (caso 5). Esperado: REJECTED, INVALID_TYPE.
-6. Número como texto: caso 6 ("50000") -> VALID, se normaliza. Caso 6b ("abc") -> REJECTED,
-   INVALID_VALUE (nunca debe aceptarse como 0). Prueba también "-5", "0" y "50.000,00": todos
-   deben dar INVALID_VALUE.
+2. Campo null (caso precargado "2. Campo null"). Esperado: HTTP 201, REJECTED, motivo
+   NULL_FIELD, http_original 422.
+3. Campo vacío (caso 3). Esperado: HTTP 201, REJECTED, EMPTY_FIELD.
+4. Correo inválido: con el formulario normal sin "Modo prueba", escribe "correo@": debe
+   bloquearse en el navegador con un mensaje. Luego marca "Modo prueba" y envía: HTTP 201,
+   REJECTED, INVALID_EMAIL. (Un valor SIN "@", como "sin-arroba", la API lo acepta como
+   identificador de usuario a propósito, para generadores externos y bots: no es una falla.)
+5. Tipo incorrecto (caso 5). Esperado: HTTP 201, REJECTED, INVALID_TYPE.
+6. Número como texto: caso 6 ("50000") -> VALID, se normaliza. Caso 6b ("abc") -> HTTP 201,
+   REJECTED, INVALID_VALUE (nunca debe aceptarse como 0). Prueba también "-5", "0" y
+   "50.000,00": todos deben dar INVALID_VALUE.
 7. ID duplicado: envía una transacción válida y vuelve a enviar el MISMO ID (caso 7). Esperado:
    HTTP 409, DUPLICATE_TRANSACTION; la primera sigue VALID.
 8. Tres transacciones en 10 s: panel Ráfaga con un correo nuevo, cantidad 4, pausa 400 ms.
@@ -75,14 +83,15 @@ CASOS
    orden). Esperado: al enviar la 3ª, la respuesta lista las 2 anteriores como "salieron" y la
    ventana queda en 1; en el dashboard la ventana activa de ese usuario muestra 1 punto; el
    historial de transacciones sigue mostrando las 3; en Logs aparecen eventos VENTANA_SALE.
-11. Hash: caso 11 -> REJECTED, HASH_MISMATCH. Luego, en el formulario con datos válidos, pulsa
+11. Hash: caso 11 -> HTTP 201, REJECTED, HASH_MISMATCH. Luego, en el formulario con datos válidos, pulsa
    "Calcular" (hash) y envía: VALID con hash_origen CLIENTE_VERIFICADO. Pulsa "Verificar
    integridad del hash guardado": debe decir que la integridad es correcta. Prueba un hash
    escrito a mano "abc": INVALID_HASH_FORMAT.
 12. Bot: ráfaga de 10 con pausa 100 ms. Esperado: desde la 3ª todas SUSPICIOUS; el dashboard
    debe mostrar más anomalías y el usuario como recurrente.
-13. JSON mal formado (caso "JSON mal formado"). Esperado: HTTP 400, MALFORMED_JSON, y la
-   transacción queda guardada como REJECTED en el historial.
+13. JSON mal formado (caso "JSON mal formado"). Esperado: HTTP 201, REJECTED, MALFORMED_JSON,
+   http_original 400; queda como REJECTED en el historial y en el panel "Peticiones erróneas
+   en cuarentena" del dashboard, desde donde se puede ver, reprocesar o descartar.
 14. Segunda capa por horario: con un usuario nuevo y fechas de hoy entre las 21:00 y las 23:00
    (franja NOCHE, límite 3) separadas por minutos, envía 4. Esperado: la 4ª SUSPICIOUS con
    motivo TOO_MANY_TRANSACTIONS y mensaje que menciona la regla por horario. Envía otras 4 un
@@ -106,9 +115,13 @@ CASOS
    no debe haber scroll horizontal de la página (las tablas pueden desplazarse por dentro).
 
 OPCIONAL (solo si puedes ejecutar comandos): detener y reiniciar MongoDB con
-`docker stop appresso-mongo` y luego `docker start appresso-mongo`. Con Mongo detenido,
-/transacciones debe mostrar un aviso rojo y POST /api/transactions debe responder 503; al
-reiniciarlo, la app debe volver a funcionar sin reiniciarla.
+`docker stop appresso-mongo` y luego `docker start appresso-mongo`, SIN reiniciar la app.
+Con Mongo detenido: GET /api/health responde "mongodb": "no disponible" y POST
+/api/transactions responde HTTP 503, motivo MONGODB_NO_DISPONIBLE, con encabezado Retry-After
+(la petición no se guarda y se puede reenviar). Al volver Mongo, todo funciona de nuevo sin
+reiniciar la app. Si la app ARRANCÓ con Mongo apagado, trabaja en memoria (aviso en
+/transacciones y "mongodb": "no disponible (modo memoria)") y se reconecta sola en unos 15 s
+cuando Mongo vuelve.
 
 ENTREGA un informe con:
 - Una tabla: caso | acción | resultado esperado | resultado real | OK/FALLA.

@@ -15,7 +15,7 @@ import urllib.request
 import uuid
 from datetime import datetime, timedelta
 
-BASE = next((a for a in sys.argv[1:] if a.startswith("http")), "http://localhost:8000")
+BASE = next((a for a in sys.argv[1:] if a.startswith("http")), "http://127.0.0.1:8000")  # "localhost" tarda ~2 s en Windows
 RUN = uuid.uuid4().hex[:6]
 PASSED, FAILED = [], []
 
