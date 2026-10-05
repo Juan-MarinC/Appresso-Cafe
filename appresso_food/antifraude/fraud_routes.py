@@ -104,7 +104,8 @@ async def post_transaction(request: Request):
     service = get_service()
     body = await request.body()
     meta = {"ip": request.client.host if request.client else None, "content_type": request.headers.get("content-type"),
-            "user_agent": request.headers.get("user-agent"), "metodo": request.method, "ruta": request.url.path}
+            "user_agent": request.headers.get("user-agent"), "metodo": request.method, "ruta": request.url.path,
+            "query": dict(request.query_params)}  # se usa solo si el cuerpo llega vacío (requests.post(url, params=...))
     outcome = await run_in_threadpool(service.process_body, body, meta)
     return JSONResponse(outcome.body, status_code=_http_status(service, outcome))
 
@@ -152,6 +153,9 @@ def discard_invalid(invalid_id: str):
 
 
 @router.get("/api/transactions")
+@router.get("/api/transactions/", include_in_schema=False)  # el alias POST con "/" hacía que este GET diera 405
+@router.get("/api/transacciones", include_in_schema=False)
+@router.get("/api/transacciones/", include_in_schema=False)
 def list_transactions(estado: Optional[str] = None, usuario: Optional[str] = None, limit: int = 100):
     return get_service().repo.list_transactions(estado, usuario, _limit(limit))
 

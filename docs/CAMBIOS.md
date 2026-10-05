@@ -27,8 +27,22 @@
 - Panel "Peticiones erróneas en cuarentena": ver original, reprocesar, descartar, filtrar por estado.
 
 ## 5. Pruebas
-- `python -m unittest discover -s tests` → 101 pruebas (antes 84). Nuevas en `tests/test_invalid_flow.py`.
+- `python -m unittest discover -s tests` → 115 pruebas (antes 101). Nuevas en `tests/test_invalid_flow.py` y `tests/test_external_clients.py`.
+
+## 6. Clientes externos (ngrok, bots de Telegram, Postman, páginas web)
+- `api/compat.py`: CORS (orígenes en `APPRESSO_CORS_ORIGINS`, por defecto `*`) y `HEAD` respondido como `GET`. Antes una página de otro dominio quedaba bloqueada por el navegador y `HEAD` daba 405.
+- `POST /api/transactions` ahora también lee `multipart/form-data` (pestaña form-data de Postman, o un `.json` adjunto) y, si el cuerpo llega vacío, los datos en la URL (`requests.post(url, params=...)`).
+- Fechas en número: segundos (`message.date` de Telegram) o milisegundos (`Date.now()`), solo en modo tolerante.
+- `GET /api/transactions/` con "/" final y `GET /api/transacciones` ya no dan 405.
+- `tests/prueba_clientes_externos.py [URL]`: 35 casos (sin URL simula ngrok en local).
+
+## 7. Verificado contra MongoDB real y por internet
+- Con MongoDB real: `/api/health` ok, 5 colecciones, ciclo de la cuarentena (REJECTED → reproceso VALID → REPROCESADA → 409), persistencia tras reiniciar y paneles de `/antifraude` sin errores.
+- Por un túnel público real: `prueba_profesor.py` 58/58 y `prueba_clientes_externos.py` 35/35, sin errores 500.
+- `tests/e2e_fraud_http.py` pasa 31/31 en modo estricto (`APPRESSO_REJECTED_AS_201=false` y `APPRESSO_LENIENT_INPUTS=false`).
 
 ## Pendiente / a tener en cuenta
-- La cuarentena y los alias se probaron con la base en memoria y con la API; falta probarlos contra un MongoDB real.
+- En modo tolerante un `user` sin "@" se acepta como identificador: el caso precargado "4. Correo inválido" del formulario (`static/js/transacciones.js`) sale VALID. Se corrige usando un correo con "@" mal formado, p. ej. `"correo@"`.
+- `docs/PRUEBA_CON_IA.md` aún espera 400/422 en algunos casos; con la configuración por defecto la app responde 201 con `REJECTED`.
+- `docs/CAMBIOS.txt` es una copia de este archivo.
 - Se pueden borrar a mano (sobran): `.system_generated/`, `logs/`, `appresso_food/appresso_food.db` (se recrea sola).

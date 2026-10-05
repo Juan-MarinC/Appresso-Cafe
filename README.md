@@ -31,7 +31,7 @@ Pedido a partir del PDF *Técnicas de resolución de problemas en desarrollo de 
 | API REST: `POST /api/transactions` y consultas de transacciones, anomalías, logs, estadísticas y ventana actual | ✅ | `fraud_routes.py` |
 | Dashboard de la pág. 44 del PDF (totales día/semana/mes, % anomalías, usuarios afectados, valor sospechoso, estados de anomalías, tendencias, evolución, mapa de calor por hora, métodos de pago, línea de tiempo y **ventana deslizante en vivo**) | ✅ | `/antifraude` |
 | Pruebas obligatorias (12 casos) | ✅ | `tests/test_fraud.py`, `tests/e2e_fraud_http.py` |
-| Guía para que una IA pruebe la app completa | ✅ | `tests/PRUEBA_CON_IA.md` |
+| Guía para que una IA pruebe la app completa | ✅ | `docs/PRUEBA_CON_IA.md` |
 
 ### Capacitación: métodos HTTP, hash y descomposición de problemas
 
@@ -99,7 +99,8 @@ Para que el profesor entre desde su equipo hay que publicar el puerto 8000. Paso
 5. Deje abierto `https://xxxx.ngrok-free.app/logs` (o `http://localhost:8000/logs`): cada petición del
    profesor aparece ahí con `origen: ngrok` y su IP. El inspector de ngrok está en `http://127.0.0.1:4040`.
 6. Antes de la sustentación, ejecute **desde otro equipo o red** (el celular con datos sirve):
-   `python tests/prueba_profesor.py https://xxxx.ngrok-free.app`. Si pasa, el profesor no debería ver errores.
+   `python tests/prueba_profesor.py https://xxxx.ngrok-free.app` y
+   `python tests/prueba_clientes_externos.py https://xxxx.ngrok-free.app`. Si pasan, el profesor no debería ver errores.
 
 Qué debe saber el profesor:
 
@@ -109,7 +110,26 @@ Qué debe saber el profesor:
   curl, Python `requests` y similares no la ven; en el navegador se pulsa *Visit Site*, o se envía el
   encabezado `ngrok-skip-browser-warning: 1` en las llamadas hechas por código.
 - **La URL cambia** cada vez que se reinicia ngrok (salvo que reserve un dominio gratis en el panel de ngrok).
-- Si MongoDB está apagado, solo las rutas de transacciones responden `503` explicando el motivo; productos, hash y totales siguen funcionando.
+- Si MongoDB está apagado, las transacciones se guardan en memoria (se pierden al reiniciar) y la app avisa; productos, hash y totales siguen funcionando.
+
+### Clientes externos: bots de Telegram, Postman, páginas web
+
+La API acepta lo que suelen mandar los clientes externos, sin errores 400 por el formato:
+
+| Cliente | Qué manda | Cómo lo recibe la app |
+|---|---|---|
+| Bot de Telegram / `requests` | JSON, o los datos en la URL (`requests.post(url, params=...)`) | Ambos sirven; la URL solo se usa si el cuerpo llega vacío |
+| Telegram, JavaScript | Fecha como número: segundos (`message.date`) o milisegundos (`Date.now()`) | Se convierte a la hora local del servidor |
+| Webhook de Telegram apuntado a la API | Un `Update` de Telegram (no es una transacción) | Responde 201 `REJECTED` y queda en la cuarentena; Telegram no reintenta |
+| Postman | Pestaña *raw* (JSON), *x-www-form-urlencoded* o *form-data* (también un `.json` adjunto) | Los tres sirven |
+| PowerShell 5.1 | JSON en Windows-1252 o UTF-16 (tildes) | Se decodifica bien |
+| Página web de otro dominio, Hoppscotch | Primero un `OPTIONS` (CORS) | Permitido; orígenes en `APPRESSO_CORS_ORIGINS` (por defecto `*`) |
+| Monitores de disponibilidad | `HEAD` | Responde como `GET`, sin cuerpo |
+
+Las fechas numéricas, la URL como cuerpo y el `user` sin "@" solo se aceptan en modo tolerante
+(`APPRESSO_LENIENT_INPUTS`, activo por defecto). Desde el **navegador** con ngrok gratis, las llamadas
+por código deben enviar el encabezado `ngrok-skip-browser-warning: 1` (CORS ya lo permite).
+`tests/prueba_clientes_externos.py` comprueba todo esto (35 casos, sin URL simula ngrok en local).
 
 **Limitaciones conocidas:**
 
@@ -218,7 +238,7 @@ Desde la carpeta del proyecto, en PowerShell:
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
-python -m pip install -r appresso_food\requirements.txt
+python -m pip install -r requirements.txt
 docker run -d --name appresso-mongo --restart unless-stopped -p 27017:27017 -v appresso-mongo-data:/data/db mongo:7
 ```
 
@@ -248,8 +268,9 @@ docker run -d --name appresso-mongo --restart unless-stopped -p 27017:27017 -v a
 | **Dashboard antifraude** | `http://localhost:8000/antifraude` |
 | Estado de MongoDB | `http://localhost:8000/api/health` |
 
-Si MongoDB no está disponible, la app arranca igual: solo el módulo
-antifraude responde `503` con el motivo y se reconecta solo cuando MongoDB vuelve.
+Si MongoDB no está disponible, la app arranca igual: el módulo antifraude
+guarda en **memoria** (los datos se pierden al reiniciar), muestra un aviso y
+`/api/health` responde `"mongodb": "no disponible (modo memoria)"`.
 Para que otro equipo de la misma red entre, use la IP de este equipo en lugar de `localhost`
 y permita el puerto 8000 en el firewall de Windows; desde otra red, use ngrok (ver más abajo).
 
@@ -257,18 +278,24 @@ y permita el puerto 8000 en el firewall de Windows; desde otra red, use ngrok (v
 
 ```powershell
 .\venv\Scripts\python.exe -m unittest discover -s tests
-.\venv\Scripts\python.exe tests\e2e_fraud_http.py
+.\venv\Scripts\python.exe tests\prueba_profesor.py
 ```
 
-El segundo necesita la app y MongoDB corriendo; deja datos de prueba visibles
-en `/antifraude`, que se borran con `tests\e2e_fraud_http.py --clean`
-(reinicie la app después, porque la ventana activa está en memoria).
+El segundo necesita la app corriendo (con MongoDB para que los datos persistan)
+y deja transacciones de prueba visibles en `/antifraude`.
+
+`tests\e2e_fraud_http.py` comprueba los códigos HTTP **estrictos** (422/400 en
+los rechazos), así que solo pasa si la app se arranca con
+`APPRESSO_REJECTED_AS_201=false` y `APPRESSO_LENIENT_INPUTS=false`. Sus datos se
+borran con `tests\e2e_fraud_http.py --clean` (reinicie la app después, porque la
+ventana activa está en memoria).
+
 Para que una IA pruebe la aplicación completa por el navegador, siga
-`tests/PRUEBA_CON_IA.md`.
+`docs/PRUEBA_CON_IA.md`.
 
 ## Pruebas
 
-Resumen de los últimos cambios: `docs/CAMBIOS.md`. Para la prueba desde afuera (ngrok): `python tests/prueba_profesor.py https://xxxx.ngrok-free.app` (58 comprobaciones; funciona con MongoDB o en modo memoria). `tests/e2e_fraud_http.py` espera los códigos estrictos y MongoDB real: córralo con `APPRESSO_REJECTED_AS_201=false`.
+Resumen de los últimos cambios: `docs/CAMBIOS.md`. Para la prueba desde afuera (ngrok): `python tests/prueba_profesor.py https://xxxx.ngrok-free.app` (58 comprobaciones; funciona con MongoDB o en modo memoria). `tests/e2e_fraud_http.py` espera los códigos estrictos y MongoDB real: córralo con `APPRESSO_REJECTED_AS_201=false` y `APPRESSO_LENIENT_INPUTS=false`. Clientes externos (Telegram, Postman, CORS): `python tests/prueba_clientes_externos.py [URL]`.
 
 ```powershell
 python -m unittest discover -s tests

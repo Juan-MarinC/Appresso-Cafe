@@ -112,7 +112,27 @@ def parse_value(value: Any) -> Tuple[Optional[float], Optional[FieldError]]:
     return number, None
 
 
-def parse_date(value: Any) -> Tuple[Optional[datetime], Optional[FieldError]]:
+EPOCH_RE = re.compile(r"^\d{10}(\d{3})?(\.\d+)?$")  # segundos (10 dígitos) o milisegundos (13)
+
+
+def _from_epoch(number: float) -> Tuple[Optional[datetime], Optional[FieldError]]:
+    """Segundos o milisegundos desde 1970 (Telegram manda `message.date` en segundos; JavaScript `Date.now()` en ms)."""
+    seconds = number / 1000 if number >= 1e11 else number
+    try:
+        parsed = datetime.fromtimestamp(seconds)  # hora local del servidor, igual que el resto de fechas
+    except (OverflowError, OSError, ValueError):
+        return None, FieldError("date", INVALID_DATE, f"'{number}' no es una marca de tiempo válida.")
+    if not 2000 <= parsed.year <= 2100:
+        return None, FieldError("date", INVALID_DATE, "El año de la fecha está fuera del rango permitido (2000-2100).")
+    return parsed.replace(microsecond=(parsed.microsecond // 1000) * 1000), None
+
+
+def parse_date(value: Any, lenient: bool = False) -> Tuple[Optional[datetime], Optional[FieldError]]:
+    if lenient and not isinstance(value, bool):
+        if isinstance(value, (int, float)) and not math.isnan(value) and not math.isinf(value):
+            return _from_epoch(float(value))
+        if isinstance(value, str) and EPOCH_RE.match(value.strip()):
+            return _from_epoch(float(value.strip()))
     if not isinstance(value, str):
         return None, _type_error("date", "fecha", value, "un texto ISO 8601")
     text = value.strip()
@@ -182,7 +202,7 @@ def validate_transaction(raw: Any, config: FraudConfig) -> Tuple[Optional[Normal
 
     ok, value = _presence(raw, "date", errors, "fecha y hora")
     if ok:
-        fecha, error = parse_date(value)
+        fecha, error = parse_date(value, lenient=config.lenient_inputs)
         if error:
             errors.append(error)
 

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from appresso_food import paginas
 from appresso_food.antifraude import fraud_routes
-from appresso_food.api import capacitacion_api, http_log, productos_api
+from appresso_food.api import capacitacion_api, compat, http_log, productos_api
 from appresso_food.nucleo import runtime, storage
 from appresso_food.web import BASE_DIR, STATIC_DIR
 
@@ -20,6 +20,7 @@ app.include_router(paginas.router)
 app.include_router(fraud_routes.router)
 app.include_router(productos_api.router)
 app.include_router(capacitacion_api.router)
+compat.install(app)  # CORS y HEAD para clientes externos (ngrok, Telegram, Postman, páginas de otro dominio)
 http_log.install(app, BASE_DIR.parent / "logs" / "http.log")  # bitácora de peticiones (/logs) y errores explicados
 
 

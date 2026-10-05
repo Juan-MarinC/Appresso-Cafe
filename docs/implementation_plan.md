@@ -13,8 +13,8 @@ con un heap, y una cola/pila de pedidos — los temas vistos en la clase de
 Programación Avanzada sobre pilas, colas, heaps y grafos.
 
 La documentación viva del proyecto está en
-[`appresso_food/README.md`](appresso_food/README.md) (arquitectura y cómo
-ejecutarlo), [`appresso_food/DICCIONARIO_LOGICA.md`](appresso_food/DICCIONARIO_LOGICA.md)
+[`README.md`](../README.md) (arquitectura y cómo
+ejecutarlo), [`DICCIONARIO_LOGICA.md`](DICCIONARIO_LOGICA.md)
 (qué hace cada módulo) y
-[`appresso_food/RESUMEN_ACADEMICO.md`](appresso_food/RESUMEN_ACADEMICO.md)
+[`RESUMEN_ACADEMICO.md`](RESUMEN_ACADEMICO.md)
 (justificación académica y guion de sustentación).

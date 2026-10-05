@@ -22,7 +22,7 @@
 | Índice hash O(1), merge sort para lotes | `estructuras.py` | Parcial (búsqueda lineal medida en laboratorio) |
 | Respuesta 201 siempre que se registra, incluso si es fraude; resultado en el cuerpo | `api_transacciones.py` | Devuelve 422 para rechazadas |
 | Script para enviar transacciones desde la terminal | `herramientas/enviar_transacciones.py` | Hay `tests/prueba_profesor.py` |
-| Guía de sustentación y pruebas de seguridad | `GUIA_SUSTENTACION.md`, `tests/` | `tests/PRUEBA_CON_IA.md` |
+| Guía de sustentación y pruebas de seguridad | `GUIA_SUSTENTACION.md`, `tests/` | `docs/PRUEBA_CON_IA.md` |
 
 ## Qué tiene el nuestro y CAPRICHO no
 

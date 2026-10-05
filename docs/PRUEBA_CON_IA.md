@@ -22,7 +22,8 @@ Necesita **controlar un navegador** (abrir páginas, escribir, hacer clic, leer 
 - **Claude en Chrome** (extensión): abre `http://localhost:8000/transacciones` y pega el prompt.
 - Cualquier otro agente con navegador. Debe correr en **tu** equipo para ver `localhost`.
 
-Para probar solo la API, sin IA: `python tests\e2e_fraud_http.py`.
+Para probar solo la API, sin IA: `python tests\prueba_profesor.py` (con la configuración por defecto).
+`python tests\e2e_fraud_http.py` exige el modo estricto (`APPRESSO_REJECTED_AS_201=false` y `APPRESSO_LENIENT_INPUTS=false`).
 
 ## Prompt para pegar
 

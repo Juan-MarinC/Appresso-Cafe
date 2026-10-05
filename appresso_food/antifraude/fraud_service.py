@@ -18,6 +18,8 @@ import threading
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from email import policy as email_policy
+from email.parser import BytesParser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -115,6 +117,30 @@ def decode_body(body: bytes) -> str:
         return body.decode("utf-8")
     except UnicodeDecodeError:
         return body.decode("cp1252", errors="replace")
+
+
+def parse_multipart(body: bytes, content_type: str) -> Any:
+    """multipart/form-data (pestaña form-data de Postman, formularios con archivo). Devuelve los campos de
+    texto como dict; si solo trae un archivo (p. ej. un .json adjunto) devuelve su contenido en bytes; si no
+    se puede leer, None (y el cuerpo sigue el camino normal, que lo registra como erróneo)."""
+    try:
+        message = BytesParser(policy=email_policy.HTTP).parsebytes(
+            b"Content-Type: " + content_type.encode("latin-1", "replace") + b"\r\n\r\n" + body)
+        if not message.is_multipart():
+            return None
+        fields, files = {}, []
+        for part in message.iter_parts():
+            data = part.get_payload(decode=True) or b""
+            name = part.get_param("name", header="content-disposition")
+            if part.get_filename():
+                files.append(data)
+            elif name:
+                fields[str(name)] = decode_body(data)
+    except Exception:  # noqa: BLE001 - un multipart roto no debe tumbar la petición
+        return None
+    if fields:
+        return fields
+    return files[0] if len(files) == 1 else None
 
 
 def parse_lenient(text: str, content_type: Optional[str] = None) -> Any:
@@ -250,7 +276,18 @@ class FraudService:
         422 datos que no cumplen las reglas, 409 ID repetido, 201 registrada. Todo request que no se acepta
         (400/422) se guarda completo en la cuarentena (`transacciones_invalidas`)."""
         meta = meta or {}
+        content_type = meta.get("content_type") or ""
+        if "multipart/form-data" in content_type.lower():
+            parsed = parse_multipart(body, content_type)
+            if isinstance(parsed, dict):
+                return self.process(parsed, json.dumps(parsed, ensure_ascii=False), meta)
+            if isinstance(parsed, bytes):  # un archivo adjunto: se procesa su contenido como si fuera el cuerpo
+                body = parsed
         text = decode_body(body)
+        query = meta.get("query") or {}
+        if not text.strip() and query and self.config.lenient_inputs:
+            # requests.post(url, params=datos): los campos llegan en la URL y el cuerpo vacío
+            return self.process(dict(query), json.dumps(query, ensure_ascii=False), meta)
         if not text.strip():
             errors = [FieldError("_body", validation.MALFORMED_JSON, "El cuerpo llegó vacío. Envíe un objeto JSON con el encabezado Content-Type: application/json.")]
             return self._reject_and_keep(None, text, errors, meta, "MAL_FORMADO", 400)
