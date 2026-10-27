@@ -7,11 +7,19 @@
   <link rel="stylesheet" href="/static/css/antifraude.css">
 {% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Antifraude</h1>
+    <p>Transacciones, ventana deslizante y anomalías en vivo.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Dashboard antifraude</p>
 
     {% if not mongo_ok %}
-    <div class="banner warn">MongoDB no está disponible: las transacciones se guardan <strong>solo en memoria</strong> y se pierden al reiniciar la app. Para guardarlas, inicie MongoDB y reinicie. ({{ mongo_error }})</div>
+    <div class="banner warn">Sin conexión a la base de datos: las transacciones se guardan <strong>solo en memoria</strong> y se pierden al reiniciar la app. Inicie MongoDB y reinicie para conservarlas. <a href="/api/health">Ver detalle técnico</a></div>
     {% endif %}
 
     <script id="cfg" type="application/json">{{ config|tojson }}</script>
@@ -38,8 +46,8 @@
         </div>
 
         <div class="panel">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                <h2 style="margin:0;">Ventana deslizante actual</h2>
+            <div class="panel-head">
+                <h2>Ventana deslizante actual</h2>
                 <span class="live">en vivo</span>
             </div>
             <p class="subtitle" style="margin:6px 0 14px;">
@@ -48,7 +56,7 @@
                 <strong>{{ config.max_transactions }} o más</strong> es una anomalía. Lo que sale de la ventana no se pierde: queda en el historial y en los logs.
             </p>
             <div id="window"><div class="empty">Cargando…</div></div>
-            <h4 style="margin:16px 0 4px; color:var(--primary-dark);">Últimas entradas y salidas</h4>
+            <h3 style="margin:16px 0 4px; color:var(--primary-dark); font-size:1.05rem;">Últimas entradas y salidas</h3>
             <div id="winevents"></div>
         </div>
 
@@ -66,9 +74,9 @@
         </div>
 
         <div class="panel">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                <h2 style="margin:0;">Anomalías</h2>
-                <select id="anom-filter" style="width:auto; padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+            <div class="panel-head">
+                <h2>Anomalías</h2>
+                <select id="anom-filter" class="filtro" aria-label="Filtrar por estado">
                     <option value="">Todos los estados</option>
                     {% for s in anomaly_states %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
                 </select>
@@ -91,9 +99,9 @@
         </div>
 
         <div class="panel">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                <h2 style="margin:0;">Peticiones erróneas en cuarentena</h2>
-                <select id="inv-filter" style="width:auto; padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+            <div class="panel-head">
+                <h2>Peticiones erróneas en cuarentena</h2>
+                <select id="inv-filter" class="filtro" aria-label="Filtrar por estado">
                     <option value="">Todas</option>
                     <option>PENDIENTE</option><option>REPROCESADA</option><option>DESCARTADA</option>
                 </select>
@@ -104,9 +112,9 @@
         </div>
 
         <div class="panel">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-                <h2 style="margin:0;">Historial de transacciones</h2>
-                <select id="txn-filter" style="width:auto; padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+            <div class="panel-head">
+                <h2>Historial de transacciones</h2>
+                <select id="txn-filter" class="filtro" aria-label="Filtrar por estado">
                     <option value="">Todas</option>
                     <option>VALID</option><option>SUSPICIOUS</option><option>REJECTED</option>
                 </select>

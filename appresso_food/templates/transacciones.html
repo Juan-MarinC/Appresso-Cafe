@@ -7,11 +7,19 @@
   <link rel="stylesheet" href="/static/css/antifraude.css">
 {% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Transacciones</h1>
+    <p>Registro de compras y detección de anomalías en vivo.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Registro de transacciones &middot; detección de anomalías</p>
 
     {% if not mongo_ok %}
-    <div class="banner warn">MongoDB no está disponible: las transacciones se guardan <strong>solo en memoria</strong> y se pierden al reiniciar la app. Para guardarlas, inicie MongoDB y reinicie. ({{ mongo_error }})</div>
+    <div class="banner warn">Sin conexión a la base de datos: las transacciones se guardan <strong>solo en memoria</strong> y se pierden al reiniciar la app. Inicie MongoDB y reinicie para conservarlas. <a href="/api/health">Ver detalle técnico</a></div>
     {% endif %}
     {% if default_secret %}
     <div class="banner warn">Se usa la llave HMAC de ejemplo de la clase: quien tenga ese código puede firmar transacciones válidas. Defina APPRESSO_HMAC_SECRET fuera de clase.</div>
@@ -23,7 +31,7 @@
         <div class="stack">
             <div class="panel">
                 <p class="eyebrow">Nueva transacción</p>
-                <h1>Enviar una compra</h1>
+                <h2>Enviar una compra</h2>
                 <p class="subtitle">
                     Regla principal: <strong>{{ config.max_transactions }} o más transacciones del mismo usuario dentro de
                     {{ "%g"|format(config.window_seconds) }} segundos</strong> se marcan como posible fraude.
@@ -118,11 +126,11 @@
                 <h2>JSON crudo y casos de prueba</h2>
                 <p class="subtitle">Pruebe el endpoint <code>POST /api/transactions</code> con cualquier cuerpo, incluso JSON mal formado.</p>
                 <div class="inline" style="margin: 12px 0;">
-                    <select id="preset"></select>
+                    <select id="preset" aria-label="Ejemplos de petición"></select>
                     <button type="button" class="btn" id="btn-preset">Cargar caso</button>
                     <button type="button" class="btn" id="btn-form2json">Usar datos del formulario</button>
                 </div>
-                <textarea id="raw" spellcheck="false"></textarea>
+                <textarea id="raw" spellcheck="false" aria-label="Cuerpo JSON de la petición"></textarea>
                 <div class="btn-row"><button type="button" class="btn primary" id="btn-raw">Enviar JSON tal cual</button></div>
             </div>
         </div>

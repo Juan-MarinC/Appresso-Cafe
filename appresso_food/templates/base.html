@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#75383f">
+  <meta name="theme-color" content="#D62B1F">
   <title>{% block titulo %}Appresso Food{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT@9..144,600..900,0..100&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
   <link rel="stylesheet" href="/static/css/app.css">
   {% block estilos %}{% endblock %}
 </head>
@@ -21,6 +21,7 @@
     ('laboratorio', '/laboratorio', 'Laboratorio'),
     ('logs', '/logs', 'Logs'),
   ] %}
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
   <header class="barra">
     <div class="barra__fila">
       <a class="marca" href="/" aria-label="Appresso Food, ir al inicio">
@@ -46,6 +47,7 @@
     <div class="pie__fila">
       <strong>Appresso Food</strong>
       <span>Proyecto académico de Programación Avanzada · pagos simulados, no se cobra dinero real.</span>
+      <small>Fotos de comida: fotógrafos de <a href="https://unsplash.com" rel="noopener">Unsplash</a>.</small>
     </div>
   </footer>
 

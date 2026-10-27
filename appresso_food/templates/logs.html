@@ -7,13 +7,21 @@
   <link rel="stylesheet" href="/static/css/antifraude.css">
 {% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Logs</h1>
+    <p>Cada petición que recibe la app, explicada y en vivo.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Logs en vivo</p>
 
     <div class="stack fx">
         <div class="panel">
             <p class="eyebrow">Qué está pasando con la app</p>
-            <h1>Peticiones recibidas <span class="live" id="live">en vivo</span></h1>
+            <h2>Peticiones recibidas <span class="live" id="live">en vivo</span></h2>
             <p class="subtitle">
                 Cada petición que llega (desde este equipo o por ngrok) con el método, la ruta, lo que se envió,
                 lo que respondió la app y <strong>por qué</strong>. Haga clic en una fila para ver el detalle.

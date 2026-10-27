@@ -21,9 +21,9 @@
         <table>
             <tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr>
             {% for item in order.items %}
-            <tr><td>{{ item.product_name }}</td><td>{{ item.quantity }}</td><td>${{ "{:,.0f}".format(item.subtotal) }}</td></tr>
+            <tr><td>{{ item.product_name }}</td><td>{{ item.quantity }}</td><td>{{ item.subtotal|pesos }}</td></tr>
             {% endfor %}
-            <tr><td colspan="2"><strong>Total</strong></td><td><strong>${{ "{:,.0f}".format(order.total) }}</strong></td></tr>
+            <tr><td colspan="2"><strong>Total</strong></td><td><strong>{{ order.total|pesos }}</strong></td></tr>
         </table>
 
         {% if order.channel == 'domicilio' %}

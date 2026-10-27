@@ -9,6 +9,7 @@
     <div class="panel">
         <h1>{{ client }}</h1>
         <p class="subtitle">Historial de pedidos y proyección de fidelización.</p>
+        <div class="tabla-scroll">
         <table>
             <tr><th>Pedido</th><th>Canal</th><th>Unidades</th><th>Total</th><th>Estado</th></tr>
             {% for order in history %}
@@ -16,13 +17,14 @@
                 <td>#{{ order.order_id }}</td>
                 <td>{{ order.channel }}</td>
                 <td>{{ order.total_quantity }}</td>
-                <td>${{ "{:,.0f}".format(order.total) }}</td>
+                <td>{{ order.total|pesos }}</td>
                 <td>{{ order.status }}</td>
             </tr>
             {% else %}
             <tr><td colspan="5">Este cliente todavía no tiene pedidos.</td></tr>
             {% endfor %}
         </table>
+        </div>
     </div>
 
     {% if progression %}

@@ -3,8 +3,16 @@
 
 {% block titulo %}Dashboard - Appresso Food{% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Dashboard</h1>
+    <p>Ventas por canal, pronósticos y zona de cobertura.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Analítica del negocio</p>
 
     <div class="summary">
         {% set local = channel_totals.get('local', {'orders': 0, 'revenue': 0}) %}
@@ -12,12 +20,12 @@
         <div class="card">
             <div class="label">Pedidos en local</div>
             <div class="value">{{ local.orders }}</div>
-            <small>${{ "{:,.0f}".format(local.revenue) }} en ventas</small>
+            <small>{{ local.revenue|pesos }} en ventas</small>
         </div>
         <div class="card">
             <div class="label">Pedidos a domicilio</div>
             <div class="value">{{ domicilio.orders }}</div>
-            <small>${{ "{:,.0f}".format(domicilio.revenue) }} en ventas</small>
+            <small>{{ domicilio.revenue|pesos }} en ventas</small>
         </div>
         <div class="card">
             <div class="label">Pronóstico local (7 días)</div>
