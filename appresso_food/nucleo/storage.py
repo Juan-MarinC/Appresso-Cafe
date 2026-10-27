@@ -171,17 +171,20 @@ def get_ingredients() -> List[Ingredient]:
     return [Ingredient(*row) for row in rows]
 
 
+def _recipe(cur: sqlite3.Cursor, product_id: int) -> List[Tuple[int, float]]:
+    return cur.execute(
+        "SELECT ingredient_id, qty_required FROM product_ingredients WHERE product_id = ?",
+        (product_id,),
+    ).fetchall()
+
+
 def deduct_ingredients_for_items(items: List[OrderItem]) -> List[str]:
     """Descuenta inventario por cada producto vendido. Devuelve alertas de stock bajo."""
     conn = _connect()
     cur = conn.cursor()
     warnings: List[str] = []
     for item in items:
-        rows = cur.execute(
-            "SELECT ingredient_id, qty_required FROM product_ingredients WHERE product_id = ?",
-            (item.product_id,),
-        ).fetchall()
-        for ingredient_id, qty_required in rows:
+        for ingredient_id, qty_required in _recipe(cur, item.product_id):
             needed = qty_required * item.quantity
             cur.execute(
                 "UPDATE ingredients SET stock_qty = stock_qty - ? WHERE id = ?",
@@ -200,11 +203,7 @@ def restore_ingredients_for_items(items: List[OrderItem]) -> None:
     conn = _connect()
     cur = conn.cursor()
     for item in items:
-        rows = cur.execute(
-            "SELECT ingredient_id, qty_required FROM product_ingredients WHERE product_id = ?",
-            (item.product_id,),
-        ).fetchall()
-        for ingredient_id, qty_required in rows:
+        for ingredient_id, qty_required in _recipe(cur, item.product_id):
             cur.execute(
                 "UPDATE ingredients SET stock_qty = stock_qty + ? WHERE id = ?",
                 (qty_required * item.quantity, ingredient_id),
@@ -292,13 +291,6 @@ def delete_order(order_id: int) -> None:
     conn.close()
 
 
-def get_order_status(order_id: int) -> Optional[str]:
-    conn = _connect()
-    row = conn.execute("SELECT status FROM orders WHERE order_id = ?", (order_id,)).fetchone()
-    conn.close()
-    return row[0] if row else None
-
-
 def update_order_status(order_id: int, status: str) -> None:
     conn = _connect()
     conn.execute("UPDATE orders SET status = ? WHERE order_id = ?", (status, order_id))
@@ -348,14 +340,6 @@ def get_order(order_id: int) -> Optional[Order]:
     order = _row_to_order(conn, row) if row else None
     conn.close()
     return order
-
-
-def get_all_orders() -> List[Order]:
-    conn = _connect()
-    rows = conn.execute(_ORDER_SELECT + " ORDER BY o.created_at").fetchall()
-    orders = [_row_to_order(conn, row) for row in rows]
-    conn.close()
-    return orders
 
 
 def get_pending_orders() -> List[Order]:
