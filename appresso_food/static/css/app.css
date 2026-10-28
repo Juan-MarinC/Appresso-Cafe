@@ -865,3 +865,32 @@ table tr:hover td { background: var(--crema-3); }
     text-decoration: none;
 }
 .saltar:focus { top: 12px; }
+
+/* Aviso de ayuda en cocina (desde el kiosko de gestos) */
+.aviso-ayuda {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    border: 3px solid var(--marca);
+    border-radius: var(--radio);
+    background: var(--crema);
+    animation: parpadeo-ayuda 1s ease-in-out infinite alternate;
+}
+.aviso-ayuda[hidden] { display: none; }
+.aviso-ayuda > div { flex: 1; display: grid; gap: 2px; }
+.aviso-ayuda strong { font-family: var(--fuente-titulos); font-size: 1.2rem; color: var(--marca-oscura); }
+.aviso-ayuda__icono { font-size: 2.2rem; }
+@keyframes parpadeo-ayuda { from { box-shadow: 0 0 0 0 rgba(214, 43, 31, .5); } to { box-shadow: 0 0 0 10px rgba(214, 43, 31, 0); } }
+
+.turno-confirmado { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 12px 0 16px; padding: 14px 18px; border-radius: var(--radio); background: var(--crema-3); }
+.turno-confirmado p { margin: 0; font-size: 1.1rem; }
+.turno-confirmado strong { font-family: var(--fuente-titulos); font-size: 2.4rem; color: var(--marca-oscura); vertical-align: middle; }
+
+/* En teléfonos angostos la marca en Fredoka empujaba el botón del menú a otra línea */
+@media (max-width: 420px) {
+    .marca strong { font-size: 1.45rem; }
+    .marca small { letter-spacing: .08em; }
+}
+@media (max-width: 340px) { .marca small { display: none; } }

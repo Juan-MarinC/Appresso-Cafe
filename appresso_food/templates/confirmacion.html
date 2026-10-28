@@ -13,6 +13,26 @@
     <div class="panel">
         <p class="eyebrow">Confirmación</p>
         <h1>¡Gracias, {{ order.client }}!</h1>
+        {% if order.channel != 'domicilio' %}
+        <div class="turno-confirmado">
+            <p>Tu turno es el <strong>#{{ order.order_id }}</strong></p>
+            <a class="boton boton--contorno" href="/turnos?pedido={{ order.order_id }}">Ver mi turno en pantalla</a>
+            {% if '/gestos' in request.headers.get('referer', '') %}
+            <a class="boton" href="/gestos" id="volver-gestos">Hacer otro pedido con gestos</a>
+            <p class="subtitle" id="volver-cuenta"></p>
+            <script>
+                // Kiosko de gestos: vuelve solo para que la siguiente persona encuentre la cámara lista.
+                (function () {
+                    let quedan = 30;
+                    const cuenta = document.getElementById("volver-cuenta");
+                    const tic = () => { cuenta.textContent = `Volvemos al pedido con gestos en ${quedan} s.`; if (quedan-- <= 0) location.href = "/gestos"; };
+                    tic();
+                    setInterval(tic, 1000);
+                })();
+            </script>
+            {% endif %}
+        </div>
+        {% endif %}
         <p class="subtitle">
             Tu pedido quedó registrado como <strong>{{ order.status }}</strong> por el canal
             <strong>{{ 'domicilio' if order.channel == 'domicilio' else 'local' }}</strong>.

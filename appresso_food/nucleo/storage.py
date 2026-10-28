@@ -352,6 +352,18 @@ def get_pending_orders() -> List[Order]:
     return orders
 
 
+def get_orders_by_status(status: str, channel: str, since: str, limit: int) -> List[Order]:
+    """Los pedidos más recientes con ese estado y canal creados desde `since` (ISO), para la pantalla de turnos."""
+    conn = _connect()
+    rows = conn.execute(
+        _ORDER_SELECT + " WHERE o.status = ? AND o.channel = ? AND o.created_at >= ? ORDER BY o.order_id DESC LIMIT ?",
+        (status, channel, since, limit),
+    ).fetchall()
+    orders = [_row_to_order(conn, row) for row in rows]
+    conn.close()
+    return orders
+
+
 def get_client_history(client: str) -> List[Order]:
     conn = _connect()
     rows = conn.execute(

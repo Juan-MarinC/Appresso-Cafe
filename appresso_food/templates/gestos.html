@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% set pagina = "gestos" %}
+
+{% block titulo %}Pedir con gestos - Appresso Food{% endblock %}
+
+{% block estilos %}
+  <link rel="stylesheet" href="/static/css/gestos.css">
+{% endblock %}
+
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Pedir con gestos</h1>
+    <p>Elige tu combo con la mano, sin hablar: pensado para personas sordas o con dificultad para hablar.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block contenido %}
+<div class="gestos">
+    <section class="panel" aria-labelledby="camara-titulo">
+        <h2 id="camara-titulo">Tu cámara</h2>
+        <div class="visor">
+            <video id="video" playsinline muted></video>
+            <canvas id="lienzo" aria-hidden="true"></canvas>
+            <div class="visor__inicio" id="visor-inicio">
+                <p>La imagen se procesa solo en este equipo: no se graba ni se envía a ningún lado.</p>
+                <button type="button" class="primary-btn" id="activar">Activar cámara</button>
+            </div>
+        </div>
+        <div class="estado" role="status" aria-live="polite">
+            <strong id="estado-titulo">Activa la cámara o toca un combo</strong>
+            <span id="estado-detalle">También puedes pedir tocando el botón de cada combo.</span>
+        </div>
+        <div class="progreso" aria-hidden="true"><div id="progreso-barra"></div></div>
+        <p class="lectura" id="lectura" aria-hidden="true"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="guia-titulo">
+        <h2 id="guia-titulo">Cómo pedir</h2>
+        <ol class="guia">
+            <li><span class="guia__icono" aria-hidden="true">☝️</span><span><strong>Muestra de 1 a 4 dedos</strong> para elegir el combo con ese número.</span></li>
+            <li><span class="guia__icono" aria-hidden="true">✌️</span><span><strong>Baja la mano y vuelve a mostrar dedos</strong> para decir cuántos quieres (si no, es 1).</span></li>
+            <li><span class="guia__icono" aria-hidden="true">👍</span><span><strong>Pulgar arriba</strong> para confirmar el pedido.</span></li>
+            <li><span class="guia__icono" aria-hidden="true">✊</span><span><strong>Puño cerrado</strong> para cancelar y elegir otro.</span></li>
+            <li><span class="guia__icono" aria-hidden="true">🖐️</span><span><strong>Palma abierta con el pulgar bien separado (3 segundos)</strong> para que un empleado venga a ayudarte; con el pulgar pegado se lee como 4 dedos.</span></li>
+        </ol>
+        <p class="subtitle">Sostén cada gesto hasta que la barra se llene (un segundo y medio).</p>
+        <button type="button" class="button secondary gestos__ayuda" id="ayuda">🖐️ Pedir ayuda a un empleado</button>
+        <div class="field-group">
+            <label for="nombre">Tu nombre (opcional)</label>
+            <input type="text" id="nombre" placeholder="Ej: Belén Castilla" autocomplete="given-name" />
+        </div>
+    </section>
+</div>
+
+<h2 class="seccion-titulo">Combos</h2>
+<div class="combos">
+    {% for combo in combos %}
+    <form class="combo" method="post" action="/pedidos" data-numero="{{ combo.numero }}" data-nombre="{{ combo.nombre }}">
+        <input type="hidden" name="client" value="Cliente con gestos" />
+        <input type="hidden" name="channel" value="local" />
+        {% for producto, cantidad in combo.lineas %}
+        <input type="hidden" name="product_id" value="{{ producto.id }}" />
+        <input type="hidden" name="quantity" value="{{ cantidad }}" data-base="{{ cantidad }}" />
+        {% endfor %}
+        <span class="combo__numero" aria-hidden="true">{{ combo.numero }}<small>{{ "dedo" if combo.numero == 1 else "dedos" }}</small></span>
+        {% if combo.foto %}<img class="combo__foto" src="/static/img/menu/{{ combo.foto }}.jpg" width="640" height="420" alt="" loading="lazy">{% endif %}
+        <h3>{{ combo.nombre }}</h3>
+        <ul class="combo__items">
+            {% for producto, cantidad in combo.lineas %}<li>{{ cantidad }} × {{ producto.name }}</li>{% endfor %}
+        </ul>
+        <label class="combo__fila">Cantidad
+            <select class="combo__cantidad" aria-label="Cantidad del {{ combo.nombre }}">{% for n in range(1, 5) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select>
+        </label>
+        <p class="combo__precio" data-total="{{ combo.total }}">{{ combo.total|pesos }}</p>
+        <button type="submit" class="primary-btn">Pedir combo {{ combo.numero }}</button>
+    </form>
+    {% else %}
+    <p class="subtitle">No hay combos disponibles: faltan productos en el menú.</p>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/gestos-reglas.js"></script>
+<script src="/static/js/gestos.js"></script>
+{% endblock %}

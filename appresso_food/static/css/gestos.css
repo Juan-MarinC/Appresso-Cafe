@@ -1,0 +1,81 @@
+/* Página "Pedir con gestos" */
+.gestos { display: grid; grid-template-columns: 1.3fr .7fr; gap: 20px; align-items: start; }
+.gestos > * { min-width: 0; }
+@media (max-width: 900px) { .gestos { grid-template-columns: 1fr; } }
+
+/* El lienzo de los puntos se estira igual que el video, así coinciden aunque cambie el tamaño */
+.visor { position: relative; min-height: 260px; border-radius: 16px; overflow: hidden; background: var(--text); }
+.visor video { display: block; width: 100%; height: auto; }
+.visor video, .visor canvas { transform: scaleX(-1); } /* espejo, como mirarse; los puntos se voltean igual */
+.visor canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.visor__inicio {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    color: var(--crema);
+}
+.visor__inicio[hidden] { display: none; }
+.visor__inicio p { margin: 0; max-width: 34ch; }
+
+.estado { display: grid; gap: 4px; margin-top: 14px; }
+.estado strong { font-family: var(--fuente-titulos); font-size: 1.5rem; font-weight: 600; color: var(--marca-oscura); }
+.estado span { color: var(--muted); }
+
+.progreso { height: 12px; margin-top: 12px; border-radius: 999px; background: var(--crema-3); overflow: hidden; }
+.progreso div { width: 0; height: 100%; background: var(--marca); transition: width .1s linear; }
+.lectura { min-height: 1.4em; margin: 8px 0 0; font-weight: 700; color: var(--text); }
+
+.guia { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 12px; }
+.guia li { display: flex; gap: 12px; align-items: center; }
+.guia__icono {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--crema);
+    font-size: 1.7rem;
+}
+
+.combos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.combo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+}
+.combo.elegido { border-color: var(--marca); box-shadow: 0 0 0 4px var(--crema); }
+.combo__foto { width: calc(100% + 28px); height: auto; aspect-ratio: 640 / 420; object-fit: cover; margin: -14px -14px 10px; border-radius: 14px 14px 0 0; }
+.combo__numero {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: var(--marca);
+    color: #fff;
+    font-family: var(--fuente-titulos);
+    font-size: 1.7rem;
+    font-weight: 700;
+    line-height: .9;
+}
+.combo__numero small { font-size: 11px; font-weight: 600; }
+.combo h3 { margin: 0 0 4px; font-size: 1.2rem; }
+.combo__items { list-style: none; padding: 0; margin: 0 0 8px; color: var(--muted); font-size: 14px; }
+.combo__precio { margin: auto 0 10px; font-family: var(--fuente-titulos); font-size: 1.5rem; font-weight: 600; color: var(--text); }
+
+.gestos__ayuda { width: 100%; margin: 0 0 16px; }
+.combo__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 14px; }
+.combo__cantidad { width: auto; min-width: 72px; padding: 6px 10px; border-radius: 10px; }

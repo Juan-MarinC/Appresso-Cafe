@@ -1,0 +1,27 @@
+/* Pantalla de turnos: pensada para leerse de lejos (televisor del local) */
+.turnos { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; align-items: start; }
+.turnos > * { min-width: 0; }
+@media (max-width: 760px) { .turnos { grid-template-columns: 1fr; } }
+
+.turnos__col { padding: 20px; border: 1px solid var(--border); border-radius: var(--radio); background: var(--panel); }
+.turnos__col h2 { margin: 0 0 14px; font-size: 1.6rem; color: var(--muted); }
+.turnos__col--listo { border: 3px solid var(--marca); }
+.turnos__col--listo h2 { color: var(--marca-oscura); }
+
+.turnos__lista { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.turno { display: grid; justify-items: center; padding: 14px 8px; border-radius: 14px; background: var(--crema-3); }
+.turno strong { font-family: var(--fuente-titulos); font-size: 3rem; font-weight: 700; line-height: 1; color: var(--muted); }
+.turno span { margin-top: 4px; font-weight: 700; color: var(--text); }
+.turnos__col--listo .turno { background: var(--crema); }
+.turnos__col--listo .turno strong { color: var(--marca-oscura); }
+.turnos__vacio { grid-column: 1 / -1; color: var(--muted); }
+
+/* Un turno que acaba de pasar a "¡Listo!" destella unos segundos */
+.turno--nuevo { animation: turno-nuevo 1s ease-in-out 6 alternate; }
+@keyframes turno-nuevo { from { transform: scale(1); } to { transform: scale(1.08); box-shadow: 0 0 0 6px var(--resalte); } }
+.turno--mio { outline: 4px solid var(--text); outline-offset: 2px; }
+
+.turnos-mio { margin-bottom: 18px; padding: 16px 20px; border-radius: var(--radio); background: var(--crema-3); font-family: var(--fuente-titulos); font-size: 1.4rem; font-weight: 600; color: var(--text); }
+.turnos-mio[hidden] { display: none; }
+.turnos-mio--listo { background: var(--marca); color: #fff; font-size: 1.8rem; }
+.turnos__pie { margin-top: 14px; }

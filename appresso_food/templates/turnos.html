@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% set pagina = "turnos" %}
+
+{% block titulo %}Turnos - Appresso Food{% endblock %}
+
+{% block estilos %}
+  <link rel="stylesheet" href="/static/css/turnos.css">
+{% endblock %}
+
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Turnos</h1>
+    <p>Cuando tu número aparezca en "¡Listo!", acércate al mostrador. Se actualiza solo.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block contenido %}
+<div class="turnos-mio" id="mio" role="status" aria-live="assertive" hidden></div>
+
+<div class="turnos">
+    <section class="turnos__col turnos__col--listo" aria-labelledby="t-listos">
+        <h2 id="t-listos">¡Listo! Recógelo</h2>
+        <ol class="turnos__lista" id="listos"></ol>
+    </section>
+    <section class="turnos__col" aria-labelledby="t-preparando">
+        <h2 id="t-preparando">Preparando</h2>
+        <ol class="turnos__lista" id="preparando"></ol>
+    </section>
+</div>
+<p class="subtitle turnos__pie" id="turnos-estado">Cargando turnos…</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/turnos.js"></script>
+{% endblock %}
