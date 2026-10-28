@@ -57,7 +57,25 @@
         };
     }
 
-    const api = { clasificar, clave, crearTemporizador, muyLejos };
+    // --- Red neuronal (ml5.neuralNetwork) -------------------------------------------------
+    // Clases que aprende la red: las mismas claves que usa el kiosko, más "nada" (mano relajada u otra forma).
+    const CLASES = ["combo1", "combo2", "combo3", "combo4", "confirmar", "cancelar", "ayuda", "nada"];
+
+    // 42 números: cada punto relativo a la muñeca y dividido por el tamaño de la mano, así la red no depende
+    // de dónde está la mano ni de qué tan cerca. La mano izquierda se refleja para que cuente como la derecha.
+    function rasgos(mano) {
+        const escala = dist(mano.wrist, mano.middle_finger_mcp) || 1;
+        const espejo = mano.handedness === "Left" ? -1 : 1;
+        return mano.keypoints.flatMap((p) => [espejo * (p.x - mano.wrist.x) / escala, (p.y - mano.wrist.y) / escala]);
+    }
+
+    // De la clave que predice la red al gesto que entiende el kiosko; "nada" no es un gesto.
+    function desdeClave(k) {
+        if (!k || k === "nada") return null;
+        return k.startsWith("combo") ? { tipo: "combo", numero: Number(k.slice(5)) } : { tipo: k };
+    }
+
+    const api = { clasificar, clave, crearTemporizador, muyLejos, rasgos, desdeClave, CLASES };
     if (typeof module !== "undefined" && module.exports) module.exports = api;
     else raiz.GestosReglas = api;
 })(typeof window !== "undefined" ? window : globalThis);

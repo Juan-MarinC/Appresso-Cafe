@@ -84,8 +84,3 @@ EDGES = [
     ("Itagüí", "Envigado", 4.1),
 ]
 
-COVERAGE_NOTE = (
-    "El grafo solo cubre los barrios listados arriba. Un domicilio hacia un "
-    "barrio fuera del grafo se rechaza automáticamente por estar fuera de "
-    "cobertura."
-)

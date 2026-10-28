@@ -30,7 +30,7 @@
         </div>
         <div class="estado" role="status" aria-live="polite">
             <strong id="estado-titulo">Activa la cámara o toca un combo</strong>
-            <span id="estado-detalle">También puedes pedir tocando el botón de cada combo.</span>
+            <span id="estado-detalle">También puedes pedir tocando la pantalla.</span>
         </div>
         <div class="progreso" aria-hidden="true"><div id="progreso-barra"></div></div>
         <p class="lectura" id="lectura" aria-hidden="true"></p>
@@ -39,10 +39,11 @@
     <section class="panel" aria-labelledby="guia-titulo">
         <h2 id="guia-titulo">Cómo pedir</h2>
         <ol class="guia">
+            <li><span class="guia__icono" aria-hidden="true">🍽️</span><span><strong>1 dedo: comer aquí · 2 dedos: para llevar.</strong> Es lo primero que se pregunta.</span></li>
             <li><span class="guia__icono" aria-hidden="true">☝️</span><span><strong>Muestra de 1 a 4 dedos</strong> para elegir el combo con ese número.</span></li>
             <li><span class="guia__icono" aria-hidden="true">✌️</span><span><strong>Baja la mano y vuelve a mostrar dedos</strong> para decir cuántos quieres (si no, es 1).</span></li>
-            <li><span class="guia__icono" aria-hidden="true">👍</span><span><strong>Pulgar arriba</strong> para confirmar el pedido.</span></li>
-            <li><span class="guia__icono" aria-hidden="true">✊</span><span><strong>Puño cerrado</strong> para cancelar y elegir otro.</span></li>
+            <li><span class="guia__icono" aria-hidden="true">👍</span><span><strong>Pulgar arriba</strong> para agregar el combo a tu pedido. Sin combo elegido, otro pulgar arriba confirma el pedido completo.</span></li>
+            <li><span class="guia__icono" aria-hidden="true">✊</span><span><strong>Puño cerrado</strong> para cancelar el combo elegido; sin combo elegido, quita el último del pedido.</span></li>
             <li><span class="guia__icono" aria-hidden="true">🖐️</span><span><strong>Palma abierta con el pulgar bien separado (3 segundos)</strong> para que un empleado venga a ayudarte; con el pulgar pegado se lee como 4 dedos.</span></li>
         </ol>
         <p class="subtitle">Sostén cada gesto hasta que la barra se llene (un segundo y medio).</p>
@@ -54,12 +55,25 @@
     </section>
 </div>
 
+<!-- La bienvenida y el carrito los activa gestos.js; sin JavaScript cada combo se pide solo con su botón. -->
+<section class="panel bienvenida" id="bienvenida" aria-labelledby="bienvenida-titulo" hidden>
+    <h2 id="bienvenida-titulo">¿Dónde vas a comer?</h2>
+    <p class="subtitle">Toca una opción o, con la cámara activa, muestra 1 dedo (aquí) o 2 dedos (para llevar).</p>
+    <div class="bienvenida__opciones">
+        <button type="button" class="bienvenida__opcion" data-llevar="0"><span aria-hidden="true">🍽️</span>Comer aquí<small>1 dedo</small></button>
+        <button type="button" class="bienvenida__opcion" data-llevar="1"><span aria-hidden="true">🛍️</span>Para llevar<small>2 dedos</small></button>
+    </div>
+</section>
+
+<div class="menu-kiosko" id="menu-kiosko">
+<div class="menu-kiosko__combos">
 <h2 class="seccion-titulo">Combos</h2>
 <div class="combos">
     {% for combo in combos %}
     <form class="combo" method="post" action="/pedidos" data-numero="{{ combo.numero }}" data-nombre="{{ combo.nombre }}">
         <input type="hidden" name="client" value="Cliente con gestos" />
         <input type="hidden" name="channel" value="local" />
+        <input type="hidden" name="pedido_token" value="{{ pedido_token }}" />
         {% for producto, cantidad in combo.lineas %}
         <input type="hidden" name="product_id" value="{{ producto.id }}" />
         <input type="hidden" name="quantity" value="{{ cantidad }}" data-base="{{ cantidad }}" />
@@ -80,9 +94,27 @@
     <p class="subtitle">No hay combos disponibles: faltan productos en el menú.</p>
     {% endfor %}
 </div>
+</div>
+
+<section class="panel carrito" id="carrito" aria-labelledby="carrito-titulo" hidden>
+    <h2 id="carrito-titulo">Tu pedido</h2>
+    <p class="carrito__modalidad"><span id="carrito-modalidad"></span> <button type="button" class="enlace" id="cambiar-modalidad">Cambiar</button></p>
+    <ul class="carrito__lineas" id="carrito-lineas" aria-live="polite"></ul>
+    <p class="carrito__total">Total <strong id="carrito-total">$0</strong></p>
+    <form method="post" action="/pedidos" id="carrito-form">
+        <input type="hidden" name="client" value="Cliente con gestos" />
+        <input type="hidden" name="channel" value="local" />
+        <input type="hidden" name="para_llevar" value="0" />
+        <input type="hidden" name="pedido_token" value="{{ pedido_token }}" />
+        <button type="submit" class="primary-btn" id="carrito-enviar" disabled>Confirmar pedido</button>
+    </form>
+    <button type="button" class="button secondary" id="carrito-vaciar" disabled>Vaciar</button>
+</section>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/gestos-reglas.js"></script>
+<script src="/static/js/camara-mano.js"></script>
 <script src="/static/js/gestos.js"></script>
 {% endblock %}

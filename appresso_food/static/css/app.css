@@ -545,15 +545,6 @@ table th {
     margin-top: 18px;
 }
 
-.status-pill {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
 .growth-list {
     list-style: none;
     padding: 0;
@@ -575,10 +566,6 @@ table th {
 .growth-list strong {
     color: var(--primary-dark);
 }
-
-.status-Solicitado { background: #fff1cf; color: var(--warning); }
-.status-En.Proceso { background: #e6f2f7; color: #00607a; }
-.status-Entregado { background: #e5f4e0; color: var(--success); }
 
 @media (max-width: 900px) {
     .grid,

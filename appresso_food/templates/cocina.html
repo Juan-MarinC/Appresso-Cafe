@@ -29,8 +29,8 @@
             <div class="queue-list">
                 {% for order in pending_orders %}
                 <div class="queue-item">
-                    <span><span class="position">#{{ loop.index }}</span>Pedido {{ order.order_id }} &middot; {{ order.client }} &middot; {{ order.channel }}</span>
-                    <strong>{{ order.total|pesos }}</strong>
+                    <span><span class="position">#{{ loop.index }}</span>Pedido {{ order.order_id }} &middot; {{ order.client }} &middot; {{ order.channel }}{% if order.para_llevar %} &middot; <strong>para llevar</strong>{% endif %}</span>
+                    <strong>{{ order.total|pesos }} &middot; {{ 'Pagado' if order.paid_txn else 'Sin pagar' }}</strong>
                 </div>
                 {% else %}
                 <p class="subtitle">No hay pedidos pendientes.</p>

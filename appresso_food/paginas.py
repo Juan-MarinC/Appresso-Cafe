@@ -1,14 +1,19 @@
 """Páginas HTML de la app de comidas: pedir, cocina, dashboard, cliente y laboratorio."""
 
 import itertools
+import secrets
 import time
+from collections import OrderedDict
 from datetime import date, datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Body, Form, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
+from appresso_food.antifraude import fraud_routes
+from appresso_food.antifraude.fraud_service import STATUS_VALID
+from appresso_food.api import gestos_api
 from appresso_food.nucleo import mapa, ranking, runtime, storage
 from appresso_food.nucleo.algorithms import find_order_linear, recursive_total_units, total_units_sold
 from appresso_food.nucleo.counter import OperationCounter
@@ -17,7 +22,7 @@ from appresso_food.nucleo.graph import RESTAURANT_NODE
 from appresso_food.nucleo.growth import arithmetic_progression, infer_weekly_increase, weeks_to_reach
 from appresso_food.nucleo.models import CHANNEL_DOMICILIO, CHANNEL_LOCAL, STATUS_ENTREGADO, OrderItem
 from appresso_food.nucleo.regression import predict_sales_numpy
-from appresso_food.nucleo.runtime import CoverageError
+from appresso_food.nucleo.runtime import CoverageError, StockError
 from appresso_food.web import templates
 
 router = APIRouter()
@@ -67,6 +72,7 @@ def _common_context(request: Request) -> dict:
         "top_products": top,
         "popular_product_names": {name for name, _ in top},
         "served_by": request.cookies.get(SERVED_BY_COOKIE, ""),
+        "pedido_token": secrets.token_urlsafe(16),  # cada formulario nuevo trae el suyo
     }
 
 
@@ -81,6 +87,21 @@ async def gesture_order(request: Request):
     context = _common_context(request)
     context["combos"] = _combos(context["products"])
     return templates.TemplateResponse("gestos.html", context)
+
+
+# --- Entrenamiento de la red de gestos (ml5.neuralNetwork) ---
+# Las claves son las de static/js/gestos-reglas.js (CLASES); aquí solo se les pone nombre para la página.
+CLASES_GESTOS = [
+    ("combo1", "1 dedo"), ("combo2", "2 dedos"), ("combo3", "3 dedos"), ("combo4", "4 dedos"),
+    ("confirmar", "Pulgar arriba"), ("cancelar", "Puño"), ("ayuda", "Palma abierta"), ("nada", "Mano relajada u otra forma"),
+]
+MINIMO_EJEMPLOS = 30
+
+
+@router.get("/entrenar")
+async def train_page(request: Request):
+    return templates.TemplateResponse("entrenar.html", {"request": request, "clases": CLASES_GESTOS, "minimo": MINIMO_EJEMPLOS,
+                                                      "token": gestos_api.token_para(request) or ""})
 
 
 # --- Pantalla de turnos: lo que se prepara y lo que ya se puede recoger en el mostrador ---
@@ -104,6 +125,26 @@ async def turns():
         "listos": [_turno(o) for o in storage.get_orders_by_status(
             STATUS_ENTREGADO, CHANNEL_LOCAL, date.today().isoformat(), LISTOS_EN_PANTALLA)],  # solo los de hoy
     }
+
+
+@router.post("/api/pedidos/{order_id}/pago")
+def pay_order(order_id: int, idTxn: str = Body(..., embed=True, min_length=1, max_length=64)):
+    """Une el pedido con su transacción de la pasarela: solo si quedó VALID y por el total exacto del pedido."""
+    order = storage.get_order(order_id)
+    if order is None:
+        raise HTTPException(404, f"No existe el pedido #{order_id}.")
+    if order.paid_txn == idTxn:
+        return {"ok": True, "pedido": order_id, "idTxn": idTxn}  # reintento del mismo pago
+    txn = fraud_routes.get_service().repo.get_transaction(idTxn)
+    if txn is None:
+        raise HTTPException(404, f"No existe la transacción '{idTxn}'.")
+    if txn.get("estado") != STATUS_VALID:
+        raise HTTPException(409, f"La transacción quedó {txn.get('estado')}: no cuenta como pago.")
+    if txn.get("valor") != order.total:
+        raise HTTPException(409, f"Se pagaron {txn.get('valor')} y el pedido #{order_id} vale {order.total:g}.")
+    if not storage.mark_order_paid(order_id, idTxn):
+        raise HTTPException(409, "El pedido ya estaba pagado o esa transacción ya pagó otro pedido.")
+    return {"ok": True, "pedido": order_id, "idTxn": idTxn}
 
 
 # --- Avisos de ayuda desde el kiosko de gestos hacia cocina ---
@@ -144,6 +185,27 @@ async def attend_help(aviso_id: int):
     return {"ok": True, "id": aviso_id}
 
 
+# --- Pedidos ---
+MAX_CANTIDAD = 50  # por producto; más que eso en un kiosko es un error de dedo
+MAX_NOMBRE = 60
+# Un doble clic o recargar la confirmación reenvía el mismo formulario: con su token se devuelve el pedido ya hecho.
+# shortcut: en memoria y solo los últimos 200; pasar a una columna en orders si se usan varios workers.
+_pedidos_por_token: "OrderedDict[str, runtime.OrderResult]" = OrderedDict()
+PEDIDOS_RECORDADOS = 200
+
+
+def _confirmacion(request: Request, result: runtime.OrderResult):
+    return templates.TemplateResponse(
+        "confirmacion.html",
+        {
+            "request": request,
+            "order": result.order,
+            "warnings": result.warnings,
+            "top_products": ranking.most_ordered(5),
+        },
+    )
+
+
 @router.post("/pedidos")
 async def create_order(
     request: Request,
@@ -153,23 +215,40 @@ async def create_order(
     served_by: str = Form(""),
 ):
     form = await request.form()
-    product_ids = form.getlist("product_id")
-    quantities = form.getlist("quantity")
-
-    items = []
-    for product_id_raw, quantity_raw in zip(product_ids, quantities):
-        quantity = int(quantity_raw or 0)
-        if quantity <= 0:
-            continue
-        product = storage.get_product(int(product_id_raw))
-        if product:
-            items.append(OrderItem(product_id=product.id, product_name=product.name, quantity=quantity, unit_price=product.price))
+    token = str(form.get("pedido_token") or "")[:64]
+    if token in _pedidos_por_token:
+        return _confirmacion(request, _pedidos_por_token[token])
 
     context = _common_context(request)
 
-    if not items:
-        context["error"] = "Selecciona al menos un producto con cantidad mayor a cero."
+    def rechazar(mensaje: str):
+        context["error"] = mensaje
         return templates.TemplateResponse("index.html", context, status_code=400)
+
+    client, served_by = client.strip(), served_by.strip()
+    if channel not in (CHANNEL_LOCAL, CHANNEL_DOMICILIO):
+        return rechazar("Elige si el pedido es para el local o a domicilio.")
+    if len(client) > MAX_NOMBRE or len(served_by) > MAX_NOMBRE:
+        return rechazar(f"Los nombres pueden tener máximo {MAX_NOMBRE} caracteres.")
+
+    product_ids = form.getlist("product_id")
+    quantities = form.getlist("quantity")
+    items = []
+    for product_id_raw, quantity_raw in zip(product_ids, quantities):
+        try:
+            product_id, quantity = int(product_id_raw), int(quantity_raw or 0)
+        except ValueError:
+            return rechazar("Las cantidades y los productos deben ser números enteros.")
+        if quantity <= 0:
+            continue
+        if quantity > MAX_CANTIDAD:
+            return rechazar(f"Máximo {MAX_CANTIDAD} unidades por producto.")
+        product = storage.get_product(product_id)
+        if product:
+            items.append(OrderItem(product_id=product.id, product_name=product.name, quantity=quantity, unit_price=product.price))
+
+    if not items:
+        return rechazar("Selecciona al menos un producto con cantidad mayor a cero.")
 
     try:
         result = runtime.place_order(
@@ -178,20 +257,16 @@ async def create_order(
             neighborhood=neighborhood if channel == CHANNEL_DOMICILIO else None,
             items=items,
             served_by=served_by or None,
+            para_llevar=form.get("para_llevar") == "1",
         )
-    except CoverageError as exc:
-        context["error"] = str(exc)
-        return templates.TemplateResponse("index.html", context, status_code=400)
+    except (CoverageError, StockError) as exc:
+        return rechazar(str(exc))
 
-    response = templates.TemplateResponse(
-        "confirmacion.html",
-        {
-            "request": request,
-            "order": result.order,
-            "warnings": result.warnings,
-            "top_products": ranking.most_ordered(5),
-        },
-    )
+    if token:
+        _pedidos_por_token[token] = result
+        if len(_pedidos_por_token) > PEDIDOS_RECORDADOS:
+            _pedidos_por_token.popitem(last=False)
+    response = _confirmacion(request, result)
     if served_by:
         response.set_cookie(SERVED_BY_COOKIE, served_by, max_age=60 * 60 * 24 * 30)
     return response

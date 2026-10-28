@@ -20,7 +20,7 @@ y en los logs; nada de lo que sale de aquí se pierde.
 import bisect
 import itertools
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 

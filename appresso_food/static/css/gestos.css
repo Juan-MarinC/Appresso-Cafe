@@ -79,3 +79,65 @@
 .gestos__ayuda { width: 100%; margin: 0 0 16px; }
 .combo__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 14px; }
 .combo__cantidad { width: auto; min-width: 72px; padding: 6px 10px; border-radius: 10px; }
+
+/* Kiosko: bienvenida (comer aquí o para llevar) y carrito con varios combos */
+.bienvenida { margin-top: 20px; text-align: center; }
+.bienvenida__opciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 640px; margin: 16px auto 0; }
+.bienvenida__opcion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 22px 12px;
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-family: var(--fuente-titulos);
+    font-size: 1.4rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.bienvenida__opcion span { font-size: 3rem; line-height: 1; }
+.bienvenida__opcion small { color: var(--muted); font-family: inherit; font-size: 14px; }
+.bienvenida__opcion:hover, .bienvenida__opcion:focus-visible { border-color: var(--marca); }
+.menu-kiosko { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+.menu-kiosko > * { min-width: 0; }
+.menu-kiosko[hidden], .carrito[hidden], .bienvenida[hidden] { display: none; }
+@media (max-width: 900px) { .menu-kiosko { grid-template-columns: 1fr; } }
+.carrito { position: sticky; top: 16px; margin-top: 20px; }
+.carrito h2 { margin-top: 0; }
+.carrito__modalidad { margin: 0 0 10px; color: var(--muted); font-weight: 700; }
+.carrito__lineas { list-style: none; padding: 0; margin: 0 0 10px; }
+.carrito__lineas li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.carrito__lineas .vacio { color: var(--muted); border: 0; }
+.carrito__total { display: flex; justify-content: space-between; font-size: 1.2rem; }
+.carrito form { margin: 0 0 8px; }
+.carrito .primary-btn, .carrito .button { width: 100%; }
+.enlace { padding: 0; border: 0; background: none; color: var(--marca); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* Página /entrenar */
+.clases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+.clase {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: left;
+}
+.clase:hover:not([disabled]) { border-color: var(--marca); }
+.clase[disabled] { opacity: .6; cursor: not-allowed; }
+.clase__cuenta { min-width: 2.6em; padding: 2px 8px; border-radius: 999px; background: var(--crema-3); text-align: center; }
+.clase--lista { border-color: var(--marca); }
+.clase--lista .clase__cuenta { background: var(--marca); color: #fff; }
+.entreno__fila { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 18px; }
+.entreno__precision { margin: 12px 0 6px; font-size: 1.1rem; }

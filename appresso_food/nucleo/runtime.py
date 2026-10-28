@@ -12,6 +12,7 @@ from appresso_food.nucleo.dispatch import DispatchEntry, DispatchHeap
 from appresso_food.nucleo.graph import RESTAURANT_NODE, DeliveryGraph, build_graph
 from appresso_food.nucleo.models import (
     CHANNEL_DOMICILIO,
+    CHANNEL_LOCAL,
     STATUS_ENTREGADO,
     STATUS_SOLICITADO,
     Order,
@@ -35,6 +36,10 @@ class CoverageError(Exception):
     """El barrio solicitado no existe en el grafo de domicilios."""
 
 
+class StockError(Exception):
+    """El inventario no alcanza para preparar el pedido."""
+
+
 def init_runtime() -> None:
     global graph
     neighborhoods = storage.get_neighborhood_names(include_restaurant=True)
@@ -53,7 +58,8 @@ def init_runtime() -> None:
             )
 
 
-def place_order(client: str, channel: str, neighborhood: Optional[str], items: List[OrderItem], served_by: Optional[str]) -> OrderResult:
+def place_order(client: str, channel: str, neighborhood: Optional[str], items: List[OrderItem], served_by: Optional[str],
+                para_llevar: bool = False) -> OrderResult:
     route = None
     distance_km = None
     eta_minutes = None
@@ -67,6 +73,10 @@ def place_order(client: str, channel: str, neighborhood: Optional[str], items: L
         route, distance_km = result
         eta_minutes = graph.eta_minutes(distance_km)
 
+    missing = storage.missing_ingredients(items)
+    if missing:
+        raise StockError(f"No alcanza el inventario de {', '.join(missing)} para este pedido.")
+
     order = Order(
         order_id=0,
         client=client,
@@ -78,6 +88,7 @@ def place_order(client: str, channel: str, neighborhood: Optional[str], items: L
         distance_km=distance_km,
         eta_minutes=eta_minutes,
         route=route,
+        para_llevar=para_llevar and channel == CHANNEL_LOCAL,
     )
     order.order_id = storage.create_order(order)
 
@@ -122,6 +133,9 @@ def undo_last() -> Optional[str]:
 
     if action.kind == "crear_pedido":
         order: Order = action.payload
+        actual = storage.get_order(order.order_id)
+        if actual and actual.paid_txn:  # el pago no se borra: su transacción no debe poder pagar otro pedido
+            return f"El pedido #{order.order_id} ya está pagado: no se puede deshacer."
         storage.restore_ingredients_for_items(order.items)
         storage.delete_order(order.order_id)
         pending_queue.remove(order.order_id)

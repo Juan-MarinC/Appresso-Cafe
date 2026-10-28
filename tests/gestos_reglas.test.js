@@ -2,7 +2,7 @@
 // Ejecutar: node --test tests/gestos_reglas.test.js
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { clasificar, clave, crearTemporizador, muyLejos } = require("../appresso_food/static/js/gestos-reglas.js");
+const { clasificar, clave, crearTemporizador, muyLejos, rasgos, desdeClave, CLASES } = require("../appresso_food/static/js/gestos-reglas.js");
 
 // Mano derecha de frente, coordenadas de imagen (la y crece hacia abajo). Muñeca en (0, 100).
 function mano({ dedos = [], pulgar = "doblado" }) {
@@ -81,4 +81,41 @@ test("una mano muy pequeña en la imagen se considera lejos", () => {
     const m = mano({ dedos: D.slice(0, 2) });     // muñeca→nudillo medio ≈ 40 px
     assert.equal(muyLejos(m, 480), false);        // 40 px de 480: cerca
     assert.equal(muyLejos(m, 720), true);         // 40 px de 720 (< 50,4): lejos
+});
+
+// Una mano con la forma de ml5: puntos con nombre y también la lista "keypoints" en orden.
+const ORDEN = ["wrist", "thumb_cmc", "thumb_mcp", "thumb_ip", "thumb_tip",
+    ...["index_finger", "middle_finger", "ring_finger", "pinky_finger"].flatMap((d) => ["_mcp", "_pip", "_dip", "_tip"].map((s) => d + s))];
+function comoMl5(m, { dx = 0, dy = 0, factor = 1, handedness = "Right" } = {}) {
+    const r = { handedness, keypoints: [] };
+    for (const nombre of ORDEN) {
+        const p = { x: m[nombre].x * factor + dx, y: m[nombre].y * factor + dy, name: nombre };
+        r[nombre] = p;
+        r.keypoints.push(p);
+    }
+    return r;
+}
+
+test("los rasgos son 42 números que no cambian al mover o acercar la mano", () => {
+    const base = mano({ dedos: D.slice(0, 2) });
+    const a = rasgos(comoMl5(base));
+    const b = rasgos(comoMl5(base, { dx: 300, dy: -120, factor: 2.5 }));
+    assert.equal(a.length, 42);
+    a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) < 1e-9));
+});
+
+test("la mano izquierda se refleja para parecerse a la derecha", () => {
+    const base = mano({ dedos: D.slice(0, 3) });
+    const derecha = rasgos(comoMl5(base));
+    const reflejada = { ...base };
+    for (const k of Object.keys(base)) reflejada[k] = { x: -base[k].x, y: base[k].y };
+    const izquierda = rasgos(comoMl5(reflejada, { handedness: "Left" }));
+    izquierda.forEach((v, i) => assert.ok(Math.abs(v - derecha[i]) < 1e-9));
+});
+
+test("cada clase de la red se traduce al gesto del kiosko", () => {
+    assert.deepEqual(desdeClave("combo3"), { tipo: "combo", numero: 3 });
+    assert.deepEqual(desdeClave("confirmar"), { tipo: "confirmar" });
+    assert.equal(desdeClave("nada"), null);
+    for (const k of CLASES.filter((c) => c !== "nada")) assert.equal(clave(desdeClave(k)), k);
 });

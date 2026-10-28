@@ -147,6 +147,22 @@ por código deben enviar el encabezado `ngrok-skip-browser-warning: 1` (CORS ya 
 - Las estadísticas se calculan en Python sobre el último mes; es suficiente
   para el volumen de este proyecto, no para millones de transacciones.
 
+### Kiosko con gestos (ml5.js)
+
+Pedir sin hablar, pensado para personas sordas o con dificultad para hablar. La cámara se procesa solo en el
+navegador con ml5.js (`ml5.handPose`): no se graba ni se envía ninguna imagen.
+
+| Ruta | Qué hace |
+|---|---|
+| `/gestos` | Kiosko: comer aquí o para llevar (1 o 2 dedos), elegir combo y cantidad con los dedos, 👍 agrega al carrito y confirma, ✊ cancela o quita el último, palma abierta pide ayuda. También funciona tocando. |
+| `/entrenar` | Graba ejemplos de cada gesto, entrena una red con `ml5.neuralNetwork`, muestra la precisión y guarda el modelo (solo desde el mismo equipo del servidor). Si no hay modelo, `/gestos` usa reglas de distancias. |
+| `/turnos` | Pantalla de turnos: pedidos del local en preparación y listos. |
+| `/cocina` | Además de la cola: avisos de ayuda del kiosko, pedidos para llevar y si están pagados. |
+
+Después de confirmar, el botón **Pagar** abre `/transacciones` con el total del pedido; un pago `VALID` por el valor
+exacto lo marca como pagado. Límite conocido: como la pasarela no guarda el número de pedido, una transacción ajena
+del mismo valor también serviría (los pagos son simulados).
+
 ### Aplicación de comidas rápidas (base del proyecto)
 
 Menú y pedidos por local y domicilio, ranking de más pedidos, grafo de barrios
@@ -205,7 +221,7 @@ el más pedido en Belén Castilla?" con un solo `JOIN` entre `orders`,
 ```
 appresso_food/
   app.py              arranque: crea la app y conecta los módulos
-  paginas.py          páginas HTML (pedir, cocina, dashboard, cliente, laboratorio)
+  paginas.py          páginas HTML (pedir, gestos, entrenar, turnos, cocina, dashboard, cliente, laboratorio)
   web.py              plantillas y carpeta estática compartidas
   nucleo/             lógica del restaurante
     models.py  storage.py  seed_data.py  runtime.py  ranking.py  growth.py  regression.py
@@ -215,9 +231,11 @@ appresso_food/
     fraud_*.py  sliding_window.py
   api/                API REST y bitácora
     productos_api.py  capacitacion_api.py  api_helpers.py  http_log.py (/logs)
+    gestos_api.py (guardar el modelo de /entrenar)
   templates/          base.html (cabecera, menú y pie) + una plantilla por página
-  static/css/         app.css (tema) y antifraude.css
+  static/css/         app.css (tema), antifraude.css, gestos.css y turnos.css
   static/js/          nav.js, transacciones.js, antifraude.js, fraud-common.js
+                      gestos.js, gestos-reglas.js, camara-mano.js, entrenar.js (kiosko con ml5.js)
 tests/                pruebas automáticas
 docs/                 diccionario de lógica, resumen académico y plan
 requirements.txt
@@ -303,13 +321,16 @@ Resumen de los últimos cambios: `docs/CAMBIOS.md`. Para la prueba desde afuera 
 
 ```powershell
 python -m unittest discover -s tests
+node --test tests/gestos_reglas.test.js
 ```
 
 Cubren: Dijkstra sobre el grafo, orden del heap de despacho, comportamiento
 FIFO/LIFO de la cola y la pila, los algoritmos de búsqueda/suma/recursividad,
 el flujo completo de `runtime` (crear domicilio con ruta calculada,
 rechazo por cobertura, deshacer con restitución de inventario) y todo el
-módulo antifraude (`tests/test_fraud.py`, sin necesidad de MongoDB).
+módulo antifraude (`tests/test_fraud.py`, sin necesidad de MongoDB), el kiosko de gestos
+(`tests/test_gestos.py` y las reglas de la mano en `tests/gestos_reglas.test.js`) y la validación
+y el pago de los pedidos (`tests/test_pedidos.py`).
 
 ## Módulo antifraude: transacciones, ventana deslizante y hash
 
