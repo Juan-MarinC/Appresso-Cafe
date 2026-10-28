@@ -21,5 +21,5 @@ Se descargaron ya recortadas a 640×420 (la portada a 900×640) el 2026-10-27.
 | `ensalada-cesar.jpg` | Ensalada César | [@ctwtn](https://unsplash.com/@ctwtn) | https://unsplash.com/photos/FK-UKNip0pE |
 
 Para agregar un producto con foto: guarde la imagen aquí (640×420, JPG) y añada su
-nombre al diccionario `fotos` de `templates/index.html`. Sin foto, la tarjeta muestra
+nombre al diccionario `FOTOS_MENU` de `paginas.py`. Sin foto, la tarjeta muestra
 el emoji de su categoría.

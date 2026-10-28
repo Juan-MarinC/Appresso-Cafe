@@ -13,6 +13,11 @@
 {% endblock %}
 
 {% block contenido %}
+    <div class="aviso-ayuda" id="aviso-ayuda" role="alert" hidden>
+        <span class="aviso-ayuda__icono" aria-hidden="true">🖐️</span>
+        <div><strong>Un cliente pide ayuda en el kiosko de gestos</strong><span id="aviso-ayuda-hace"></span></div>
+        <button type="button" class="button" id="aviso-ayuda-ok">Voy en camino</button>
+    </div>
 
     <div class="content-grid">
         <div class="panel">
@@ -65,4 +70,8 @@
             <button type="submit" class="button danger" {% if not undo_preview %}disabled{% endif %}>Deshacer última acción</button>
         </form>
     </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/cocina-ayuda.js"></script>
 {% endblock %}
