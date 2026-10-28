@@ -89,22 +89,26 @@ def _texts(fields: Any) -> List[str]:
     return texts
 
 
-def find_match(received: str, candidates: List[Tuple[str, Any]], secret: str) -> Optional[Tuple[str, str]]:
-    """candidates: [(etiqueta, datos)]. Devuelve (etiqueta, texto firmado) del primero cuyo HMAC coincide."""
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _first_match(received: str, candidates: List[Tuple[str, Any]], digest) -> Optional[Tuple[str, str]]:
     for label, fields in candidates:
         for text in _texts(fields):
-            if hashes_match(hmac_text(text, secret), received):
+            if hashes_match(digest(text), received):
                 return label, text
     return None
+
+
+def find_match(received: str, candidates: List[Tuple[str, Any]], secret: str) -> Optional[Tuple[str, str]]:
+    """candidates: [(etiqueta, datos)]. Devuelve (etiqueta, texto firmado) del primero cuyo HMAC coincide."""
+    return _first_match(received, candidates, lambda text: hmac_text(text, secret))
 
 
 def find_plain_match(received: str, candidates: List[Tuple[str, Any]]) -> Optional[Tuple[str, str]]:
     """Igual que find_match pero con SHA-256 SIN llave (diapositivas 15-17). Integridad básica, no autentica."""
-    for label, fields in candidates:
-        for text in _texts(fields):
-            if hashes_match(hashlib.sha256(text.encode("utf-8")).hexdigest(), received):
-                return label, text
-    return None
+    return _first_match(received, candidates, _sha256_text)
 
 
 def diagnose(received: str, candidates: List[Tuple[str, Any]], secret: str, other_secrets: Dict[str, str],
@@ -116,7 +120,7 @@ def diagnose(received: str, candidates: List[Tuple[str, Any]], secret: str, othe
     cause = None
     for _, fields in candidates:
         for text in _texts(fields):
-            if hashes_match(hashlib.sha256(text.encode("utf-8")).hexdigest(), received):
+            if hashes_match(_sha256_text(text), received):
                 cause = ("Su hash es SHA-256 SIN llave. El servidor espera HMAC-SHA256 con la llave compartida "
                          "(un SHA-256 simple no prueba quién lo generó).")
             for name, key in other_secrets.items():

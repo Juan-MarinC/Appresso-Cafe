@@ -6,3 +6,4 @@ server.log
 *.db-journal
 logs/
 appresso_food/appresso_food.db
+.claude/

@@ -771,8 +771,11 @@ class FraudService:
         cases = Counter(a["tipo"] for a in month_a) + Counter(x["motivo"] for x in month_all if x["estado"] == STATUS_REJECTED and x.get("motivo"))
 
         by_hour = [{"hora": h, "transacciones": 0, "anomalias": 0} for h in range(24)]
+        payments = defaultdict(lambda: {"cantidad": 0, "valor": 0.0})
         for x in month_t:
             by_hour[x["fecha"].hour]["transacciones"] += 1
+            payments[x.get("metodo_pago")]["cantidad"] += 1
+            payments[x.get("metodo_pago")]["valor"] += x.get("valor") or 0
         for x in month_a:
             by_hour[x["fecha"].hour]["anomalias"] += 1
 
@@ -786,11 +789,6 @@ class FraudService:
                 "anomalias": len(day_a),
                 "rechazadas": sum(1 for x in day_t if not x.get("aceptada")),
             })
-
-        payments = defaultdict(lambda: {"cantidad": 0, "valor": 0.0})
-        for x in month_t:
-            payments[x.get("metodo_pago")]["cantidad"] += 1
-            payments[x.get("metodo_pago")]["valor"] += x.get("valor") or 0
 
         def trend(current: dict, previous: dict) -> dict:
             def delta(key):

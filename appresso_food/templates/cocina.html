@@ -3,8 +3,16 @@
 
 {% block titulo %}Cocina - Appresso Food{% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Cocina</h1>
+    <p>Cola de pedidos, despacho de domicilios y deshacer.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Operación de cocina</p>
 
     <div class="content-grid">
         <div class="panel">
@@ -17,7 +25,7 @@
                 {% for order in pending_orders %}
                 <div class="queue-item">
                     <span><span class="position">#{{ loop.index }}</span>Pedido {{ order.order_id }} &middot; {{ order.client }} &middot; {{ order.channel }}</span>
-                    <strong>${{ "{:,.0f}".format(order.total) }}</strong>
+                    <strong>{{ order.total|pesos }}</strong>
                 </div>
                 {% else %}
                 <p class="subtitle">No hay pedidos pendientes.</p>

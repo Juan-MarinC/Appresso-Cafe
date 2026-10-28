@@ -3,12 +3,20 @@
 
 {% block titulo %}Laboratorio de complejidad - Appresso Food{% endblock %}
 
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Laboratorio</h1>
+    <p>Big O: cuántas operaciones hacen los algoritmos según el tamaño de la entrada.</p>
+  </div>
+</section>
+{% endblock %}
+
 {% block contenido %}
-<p class="eyebrow">Big O &middot; Complejidad computacional</p>
 
     <div class="panel">
         <p class="eyebrow">Programación avanzada</p>
-        <h1>Laboratorio de algoritmos</h1>
+        <h2>Laboratorio de algoritmos</h2>
         <p class="subtitle">
             Genera pedidos sintéticos (no se guardan en la base de datos) y mide cuántas operaciones
             hacen los algoritmos de búsqueda, suma y recursividad cuando crece el tamaño de la entrada n.

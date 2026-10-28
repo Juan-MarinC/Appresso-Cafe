@@ -15,7 +15,7 @@
         <a class="boton boton--contorno" href="#domicilios">Ver cobertura</a>
       </div>
     </div>
-    <div class="hero__imagen"><img src="/static/img/hero.svg" width="600" height="520" alt="Hamburguesa, papas fritas y malteada"></div>
+    <div class="hero__imagen"><img src="/static/img/menu/portada.jpg" width="900" height="640" alt="Hamburguesa con queso, lechuga y tomate"></div>
   </div>
 </section>
 {% endblock %}
@@ -30,22 +30,17 @@
     <div class="grid">
         <div class="panel">
             <p class="eyebrow">Nuevo pedido</p>
-            <h1>¿Qué se le antoja hoy?</h1>
+            <h2 class="titulo-pedido">¿Qué se le antoja hoy?</h2>
             <p class="subtitle">Elige del menú, indica el canal (mostrador o domicilio) y confirma. Si es domicilio, calculamos la ruta más corta con el grafo de barrios.</p>
 
             <form method="post" action="/pedidos" id="order-form">
-                <div class="field-group">
-                    <label for="client">Nombre del cliente</label>
-                    <input type="text" id="client" name="client" placeholder="Ej: Belén Castilla" required />
-                </div>
-
-                <div class="field-group">
-                    <label>Canal de venta</label>
+                <fieldset class="canal">
+                    <legend>¿Cómo lo quieres?</legend>
                     <div class="channel-toggle">
-                        <label><input type="radio" name="channel" value="local" checked onchange="toggleNeighborhood()" /> Local (mostrador)</label>
-                        <label><input type="radio" name="channel" value="domicilio" onchange="toggleNeighborhood()" /> Domicilio</label>
+                        <label><input type="radio" name="channel" value="local" checked onchange="toggleNeighborhood()" /><span class="canal__icono" aria-hidden="true">🏪</span><span><strong>En el local</strong><small>Lo recoges en el mostrador</small></span></label>
+                        <label><input type="radio" name="channel" value="domicilio" onchange="toggleNeighborhood()" /><span class="canal__icono" aria-hidden="true">🛵</span><span><strong>Domicilio</strong><small>Te lo llevamos por la ruta más corta</small></span></label>
                     </div>
-                </div>
+                </fieldset>
 
                 <div class="field-group" id="neighborhood-field" style="display:none;">
                     <label for="neighborhood">Barrio de entrega</label>
@@ -56,22 +51,47 @@
                     </select>
                 </div>
 
-                <div class="field-group">
-                    <label for="served_by">Atendido por (cajero/a)</label>
-                    <input type="text" id="served_by" name="served_by" placeholder="Tu nombre" value="{{ served_by }}" />
+                <div class="campos-fila">
+                    <div class="field-group">
+                        <label for="client">Nombre del cliente</label>
+                        <input type="text" id="client" name="client" placeholder="Ej: Belén Castilla" required />
+                    </div>
+                    <div class="field-group">
+                        <label for="served_by">Atendido por (cajero/a)</label>
+                        <input type="text" id="served_by" name="served_by" placeholder="Tu nombre" value="{{ served_by }}" />
+                    </div>
                 </div>
 
-                <h3>Menú</h3>
+                {% set emojis = {'Hamburguesas':'🍔','Perros calientes':'🌭','Pollo':'🍗','Acompañantes':'🍟','Pizza':'🍕','Saludable':'🥗','Bebidas':'🥤'} %}
+                {# Fotos en static/img/menu (créditos en CREDITOS.md); un producto sin foto muestra su emoji #}
+                {% set fotos = {'Papas Fritas':'papas-fritas','Papas con Queso':'papas-con-queso','Gaseosa':'gaseosa','Malteada':'malteada','Hamburguesa Clásica':'hamburguesa-clasica','Hamburguesa Doble':'hamburguesa-doble','Perro Caliente':'perro-caliente','Pizza Personal':'pizza-personal','Alitas BBQ x6':'alitas-bbq','Ensalada César':'ensalada-cesar'} %}
+                <h2 class="seccion-titulo">Menú</h2>
+                {# Todos los productos en una cuadrícula; los chips solo filtran lo que se ve (pedido.js) #}
+                <div class="chips" role="group" aria-label="Filtrar el menú por categoría">
+                    <button type="button" class="chip-cat" data-categoria="" aria-pressed="true">Todo</button>
+                    {% for categoria, _ in products|groupby('category') %}
+                    <button type="button" class="chip-cat" data-categoria="{{ categoria }}" aria-pressed="false"><span aria-hidden="true">{{ emojis.get(categoria, '🍽️') }}</span>{{ categoria }}</button>
+                    {% endfor %}
+                </div>
+
                 <div class="menu-grid">
                     {% for p in products %}
-                    <div class="menu-card">
+                    <div class="menu-card" data-nombre="{{ p.name }}" data-precio="{{ p.price }}" data-categoria="{{ p.category }}">
                         {% if p.name in popular_product_names %}<span class="popular-badge">Popular</span>{% endif %}
-                        <div class="emoji" aria-hidden="true">{{ {'Hamburguesas':'🍔','Perros calientes':'🌭','Pollo':'🍗','Acompañantes':'🍟','Pizza':'🍕','Saludable':'🥗','Bebidas':'🥤'}.get(p.category, '🍽️') }}</div>
+                        {% if p.name in fotos %}
+                        <img class="menu-card__foto" src="/static/img/menu/{{ fotos[p.name] }}.jpg" width="640" height="420" alt="" loading="lazy">
+                        {% else %}
+                        <div class="emoji" aria-hidden="true">{{ emojis.get(p.category, '🍽️') }}</div>
+                        {% endif %}
                         <div class="category">{{ p.category }}</div>
                         <div class="name">{{ p.name }}</div>
-                        <div class="price">${{ "{:,.0f}".format(p.price) }}</div>
+                        <div class="price">{{ p.price|pesos }}</div>
                         <input type="hidden" name="product_id" value="{{ p.id }}" />
-                        <input type="number" name="quantity" min="0" value="0" />
+                        <div class="stepper">
+                            <button type="button" class="stepper__btn" data-paso="-1" aria-label="Quitar una unidad de {{ p.name }}">−</button>
+                            <input type="number" name="quantity" min="0" value="0" inputmode="numeric" aria-label="Cantidad de {{ p.name }}" />
+                            <button type="button" class="stepper__btn stepper__btn--mas" data-paso="1" aria-label="Agregar una unidad de {{ p.name }}">+</button>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -83,7 +103,14 @@
         </div>
 
         <div class="panel side-panel">
-            <h2>Lo más pedido</h2>
+            <section class="resumen" aria-labelledby="resumen-titulo">
+                <h2 class="seccion-titulo" id="resumen-titulo">Tu pedido</h2>
+                <p class="resumen__vacio" id="resumen-vacio">Aún no has agregado productos.</p>
+                <ul class="resumen__lista" id="resumen-lista"></ul>
+                <div class="resumen__total"><span>Subtotal</span><strong id="resumen-total" aria-live="polite">$0</strong></div>
+                <button type="submit" form="order-form" class="primary-btn" id="resumen-enviar">Confirmar pedido</button>
+            </section>
+            <h2 class="seccion-titulo">Lo más pedido</h2>
             <p class="subtitle">Guíate por lo que más piden otros clientes.</p>
             <ul>
                 {% for name, qty in top_products %}
@@ -100,10 +127,16 @@
         <h2>Salimos por la ruta más corta</h2>
         {% include "_mapa.html" %}
     </section>
+
+    <div class="barra-pedido" id="barra-pedido" hidden>
+        <span id="barra-pedido-texto"></span>
+        <button type="submit" form="order-form">Confirmar</button>
+    </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/mapa.js"></script>
+<script src="/static/js/pedido.js"></script>
 <script>
         function toggleNeighborhood() {
             const domicilio = document.querySelector('input[name="channel"][value="domicilio"]').checked;

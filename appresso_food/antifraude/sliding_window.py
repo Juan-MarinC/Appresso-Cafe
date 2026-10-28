@@ -44,10 +44,6 @@ class AddResult:
     out_of_order: bool = False  # llegó con una fecha anterior a la última ya recibida del usuario
     in_active_window: bool = True  # False si ya estaba fuera de la ventana vigente al llegar
 
-    @property
-    def late(self) -> bool:  # nombre anterior
-        return self.out_of_order
-
 
 def densest_window(entries: List[WindowEntry], target: WindowEntry, window: timedelta) -> List[WindowEntry]:
     """Mayor grupo de transacciones dentro de un intervalo de MENOS de `window` que contenga a `target`.

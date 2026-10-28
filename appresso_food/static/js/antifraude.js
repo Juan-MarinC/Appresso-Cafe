@@ -32,7 +32,7 @@
         const pct = (n) => (total ? Math.round((1000 * n) / total) / 10 : 0);
         const card = (cls, titulo, n, nota) => `<div class="kpi ${cls}"><div class="k">${titulo}</div><div class="v">${n}</div><div class="s">${pct(n)}% · ${nota}</div></div>`;
         $("clasif").innerHTML = `
-            <div class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+            <div class="kpis kpis--3">
                 ${card("ok", "Buenas", buenas, "pasaron todas las reglas")}
                 ${card("warn", "Sospechosas / posible fraude", sospechosas, "aceptadas pero con anomalía")}
                 ${card("bad", "Erróneas", erroneas, "formato, hash o datos inválidos")}
@@ -89,7 +89,7 @@
         const max = Math.max(1, ...hours.map((h) => h.anomalias));
         $("heat").innerHTML = hours.map((h) => {
             const a = h.anomalias / max;
-            const bg = h.anomalias ? `rgba(198,40,40,${0.18 + 0.72 * a})` : "#fff8f0";
+            const bg = h.anomalias ? `rgba(139,30,63,${0.18 + 0.72 * a})` : "#fff8f0";
             const color = a > 0.55 ? "#fff" : "var(--primary-dark)";
             return `<div style="background:${bg}; color:${color};" title="${String(h.hora).padStart(2, "0")}:00 · ${h.anomalias} anomalías · ${h.transacciones} transacciones">${String(h.hora).padStart(2, "0")}<small>${h.anomalias}/${h.transacciones}</small></div>`;
         }).join("");
