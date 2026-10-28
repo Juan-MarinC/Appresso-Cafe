@@ -81,7 +81,7 @@ class GestosTest(_ConBaseTemporal):
         primero = re.search(r'<form class="combo".*?</form>', html, re.S).group(0)
         ids = re.findall(r'name="product_id" value="(\d+)"', primero)
         base = [int(q) for q in re.findall(r'data-base="(\d+)"', primero)]
-        # Lo que hace gestos.js al elegir cantidad 3: cada cantidad del combo por 3
+        # Lo que arma el carrito de gestos.js con 3 de un combo: cada cantidad del combo por 3
         datos = {"client": "Ana", "channel": "local", "product_id": ids, "quantity": [str(q * 3) for q in base]}
         self.assertEqual(self.client.post("/pedidos", data=datos).status_code, 200)
         pedido = storage.get_pending_orders()[0]

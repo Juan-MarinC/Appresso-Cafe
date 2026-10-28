@@ -8,7 +8,6 @@ CHANNEL_LOCAL = "local"
 CHANNEL_DOMICILIO = "domicilio"
 
 STATUS_SOLICITADO = "Solicitado"
-STATUS_EN_PROCESO = "En Proceso"
 STATUS_ENTREGADO = "Entregado"
 
 

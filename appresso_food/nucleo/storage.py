@@ -19,7 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 from appresso_food.nucleo import seed_data
 from appresso_food.nucleo.graph import RESTAURANT_NODE
-from appresso_food.nucleo.models import Ingredient, Neighborhood, Order, OrderItem, Product
+from appresso_food.nucleo.models import Ingredient, Order, OrderItem, Product
 
 DB_PATH = Path(__file__).resolve().parent.parent / "appresso_food.db"
 

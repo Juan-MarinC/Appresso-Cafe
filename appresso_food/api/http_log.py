@@ -48,7 +48,7 @@ CLIENTS = [
     ("powershell", "PowerShell"), ("axios", "axios"), ("node", "Node.js"), ("mozilla", "Navegador"),
 ]
 
-from appresso_food.web import BASE_DIR, templates
+from appresso_food.web import templates
 router = APIRouter()
 logger = logging.getLogger("appresso.http")
 

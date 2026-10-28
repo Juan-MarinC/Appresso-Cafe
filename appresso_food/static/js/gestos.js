@@ -30,9 +30,8 @@
         $("estado-detalle").textContent = detalle;
     }
 
-    // Las cantidades ocultas del formulario son las de un combo (data-base) multiplicadas por n.
+    // Muestra en la tarjeta cuántos combos y su precio; los productos los suma el carrito desde data-base.
     function fijarCantidad(form, n) {
-        form.querySelectorAll('input[name="quantity"]').forEach((i) => { i.value = Number(i.dataset.base) * n; });
         form.querySelector(".combo__cantidad").value = String(n);
         const precio = form.querySelector(".combo__precio");
         precio.textContent = pesos(Number(precio.dataset.total) * n);
