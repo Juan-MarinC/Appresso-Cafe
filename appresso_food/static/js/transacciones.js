@@ -88,6 +88,19 @@
         return payload;
     }
 
+    // Llegando desde la confirmación de un pedido (?pedido=3&valor=82000), el pago aceptado se une a ese pedido.
+    const params = new URLSearchParams(location.search);
+    const pedido = /^\d+$/.test(params.get("pedido") || "") ? params.get("pedido") : null;
+
+    async function pagarPedido(idTxn) {
+        const res = await api(`/api/pedidos/${pedido}/pago`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idTxn }) });
+        const detalle = res.data && res.data.detail;
+        $("pagando").className = `banner ${res.ok ? "ok" : "bad"}`;
+        $("pagando").textContent = res.ok ? `Pedido #${pedido} pagado con la transacción ${idTxn}.`
+            : `El pedido #${pedido} no quedó pagado: ${typeof detalle === "string" ? detalle : "revisa el valor y vuelve a intentar"}`;
+        $("pagando").scrollIntoView({ block: "center", behavior: "smooth" });  // queda arriba del formulario
+    }
+
     async function post(bodyText) {
         return api("/api/transactions", { method: "POST", headers: { "Content-Type": "application/json" }, body: bodyText });
     }
@@ -158,6 +171,7 @@
             renderResult(res);
             if (res.data && res.data.ok) {
                 lastAcceptedId = res.data.idTxn;
+                if (pedido) await pagarPedido(res.data.idTxn);
                 $("f-id").value = newId();
                 $("f-hash").value = ""; // el hash era de la transacción anterior
                 $("hash-note").textContent = "";
@@ -277,6 +291,11 @@
         $("f-cedula").value = "1012345678";
         $("f-date").value = nowIso();
         $("f-value").value = "25000";
+        if (pedido) {
+            if (/^\d+$/.test(params.get("valor") || "")) $("f-value").value = params.get("valor");
+            $("pagando").hidden = false;
+            $("pagando").textContent = `Pagando el pedido #${pedido}: el valor ya es el total del pedido.`;
+        }
         fillPresets();
         $("txn-form").addEventListener("submit", submitForm);
         $("btn-newid").onclick = () => { $("f-id").value = newId(); };

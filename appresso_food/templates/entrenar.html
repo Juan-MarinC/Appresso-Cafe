@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% set pagina = "entrenar" %}
+
+{% block titulo %}Entrenar gestos - Appresso Food{% endblock %}
+
+{% block estilos %}
+  <link rel="stylesheet" href="/static/css/gestos.css">
+{% endblock %}
+
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Entrenar la red de gestos</h1>
+    <p>Graba ejemplos de cada gesto con tu mano y entrena una red neuronal con ml5.js. Todo ocurre en este navegador.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block contenido %}
+<div class="gestos">
+    <section class="panel" aria-labelledby="camara-titulo">
+        <h2 id="camara-titulo">Tu cámara</h2>
+        <div class="visor">
+            <video id="video" playsinline muted></video>
+            <canvas id="lienzo" aria-hidden="true"></canvas>
+            <div class="visor__inicio" id="visor-inicio">
+                <p>La imagen se procesa solo en este equipo. Se guardan únicamente los 21 puntos de la mano, nunca la foto.</p>
+                <button type="button" class="primary-btn" id="activar">Activar cámara</button>
+            </div>
+        </div>
+        <div class="estado" role="status" aria-live="polite">
+            <strong id="estado-titulo">Activa la cámara para grabar ejemplos</strong>
+            <span id="estado-detalle"></span>
+        </div>
+        <div class="progreso" aria-hidden="true"><div id="progreso-barra"></div></div>
+        <p class="lectura" id="lectura" aria-live="polite"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="pasos-titulo">
+        <h2 id="pasos-titulo">1. Graba ejemplos</h2>
+        <p class="subtitle">Elige un gesto y muéstralo a la cámara: se graban 3 segundos. Haz al menos <strong>{{ minimo }}</strong> ejemplos por gesto, moviendo un poco la mano, acercándola y alejándola, y con las dos manos si puedes.</p>
+        <div class="clases" id="clases" data-minimo="{{ minimo }}" data-token="{{ token }}">
+            {% for clase, nombre in clases %}
+            <button type="button" class="clase" data-clase="{{ clase }}" disabled>
+                <span class="clase__nombre">{{ nombre }}</span>
+                <span class="clase__cuenta" data-cuenta="{{ clase }}">0</span>
+            </button>
+            {% endfor %}
+        </div>
+        <div class="entreno__fila">
+            <button type="button" class="button secondary" id="cargar-muestras">Cargar las muestras guardadas</button>
+            <button type="button" class="button secondary" id="borrar-muestras">Empezar de cero</button>
+        </div>
+
+        <h2>2. Entrena y evalúa</h2>
+        <p class="subtitle">La red aprende con el 80 % de los ejemplos y se evalúa con el 20 % que no vio.</p>
+        <button type="button" class="primary-btn" id="entrenar" disabled>Entrenar la red</button>
+        <p class="lectura" id="entreno-estado" aria-live="polite"></p>
+        <div id="resultado"></div>
+
+        <h2>3. Prueba y guarda</h2>
+        <div class="entreno__fila">
+            <button type="button" class="button secondary" id="probar" disabled>Probar en vivo</button>
+            <button type="button" class="button" id="guardar" disabled>Guardar en el proyecto</button>
+        </div>
+        <p class="subtitle" id="modelo-actual">Buscando el modelo guardado…</p>
+        {% if not token %}<p class="subtitle">Para guardar el modelo abre esta página en el mismo equipo del servidor (no por ngrok).</p>{% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/gestos-reglas.js"></script>
+<script src="/static/js/camara-mano.js"></script>
+<script src="/static/js/entrenar.js"></script>
+{% endblock %}

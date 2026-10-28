@@ -13,6 +13,7 @@ filtrando por neighborhoods.name.
 
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -67,7 +68,15 @@ CREATE TABLE IF NOT EXISTS orders (
     distance_km REAL,
     eta_minutes REAL,
     route TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    para_llevar INTEGER NOT NULL DEFAULT 0
+);
+
+-- Pago de un pedido en la pasarela (antifraude): una transacción paga un solo pedido.
+CREATE TABLE IF NOT EXISTS order_payments (
+    order_id INTEGER PRIMARY KEY REFERENCES orders(order_id),
+    id_txn TEXT NOT NULL UNIQUE,
+    paid_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -89,6 +98,9 @@ def _connect() -> sqlite3.Connection:
 def init_db() -> None:
     conn = _connect()
     conn.executescript(SCHEMA)
+    # Bases creadas antes del kiosko: CREATE TABLE IF NOT EXISTS no agrega columnas nuevas.
+    if "para_llevar" not in {col[1] for col in conn.execute("PRAGMA table_info(orders)")}:
+        conn.execute("ALTER TABLE orders ADD COLUMN para_llevar INTEGER NOT NULL DEFAULT 0")
     conn.commit()
     _seed_if_empty(conn)
     conn.close()
@@ -178,6 +190,23 @@ def _recipe(cur: sqlite3.Cursor, product_id: int) -> List[Tuple[int, float]]:
     ).fetchall()
 
 
+def missing_ingredients(items: List[OrderItem]) -> List[str]:
+    """Ingredientes cuyo inventario no alcanza para preparar todos los items juntos."""
+    conn = _connect()
+    cur = conn.cursor()
+    needed: Dict[int, float] = {}
+    for item in items:
+        for ingredient_id, qty_required in _recipe(cur, item.product_id):
+            needed[ingredient_id] = needed.get(ingredient_id, 0) + qty_required * item.quantity
+    missing = []
+    for ingredient_id, qty in needed.items():
+        name, stock = cur.execute("SELECT name, stock_qty FROM ingredients WHERE id = ?", (ingredient_id,)).fetchone()
+        if stock < qty:
+            missing.append(name)
+    conn.close()
+    return sorted(missing)
+
+
 def deduct_ingredients_for_items(items: List[OrderItem]) -> List[str]:
     """Descuenta inventario por cada producto vendido. Devuelve alertas de stock bajo."""
     conn = _connect()
@@ -255,8 +284,8 @@ def create_order(order: Order) -> int:
 
     cur.execute(
         """
-        INSERT INTO orders (client, channel, neighborhood_id, status, served_by, distance_km, eta_minutes, route, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO orders (client, channel, neighborhood_id, status, served_by, distance_km, eta_minutes, route, created_at, para_llevar)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             order.client,
@@ -268,6 +297,7 @@ def create_order(order: Order) -> int:
             order.eta_minutes,
             json.dumps(order.route) if order.route else None,
             order.created_at,
+            int(order.para_llevar),
         ),
     )
     order_id = cur.lastrowid
@@ -291,6 +321,22 @@ def delete_order(order_id: int) -> None:
     conn.close()
 
 
+def mark_order_paid(order_id: int, id_txn: str) -> bool:
+    """Registra el pago. False si el pedido ya estaba pagado o esa transacción ya pagó otro pedido."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO order_payments (order_id, id_txn, paid_at) VALUES (?, ?, ?)",
+            (order_id, id_txn, datetime.now().isoformat(timespec="seconds")),
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
 def update_order_status(order_id: int, status: str) -> None:
     conn = _connect()
     conn.execute("UPDATE orders SET status = ? WHERE order_id = ?", (status, order_id))
@@ -300,7 +346,7 @@ def update_order_status(order_id: int, status: str) -> None:
 
 def _row_to_order(conn: sqlite3.Connection, row) -> Order:
     (order_id, client, channel, neighborhood_name, status, served_by,
-     distance_km, eta_minutes, route_json, created_at) = row
+     distance_km, eta_minutes, route_json, created_at, para_llevar, paid_txn) = row
     items_rows = conn.execute(
         """
         SELECT oi.product_id, p.name, oi.quantity, oi.unit_price
@@ -323,14 +369,17 @@ def _row_to_order(conn: sqlite3.Connection, row) -> Order:
         eta_minutes=eta_minutes,
         route=json.loads(route_json) if route_json else None,
         created_at=created_at,
+        para_llevar=bool(para_llevar),
+        paid_txn=paid_txn,
     )
 
 
 _ORDER_SELECT = """
     SELECT o.order_id, o.client, o.channel, n.name, o.status, o.served_by,
-           o.distance_km, o.eta_minutes, o.route, o.created_at
+           o.distance_km, o.eta_minutes, o.route, o.created_at, o.para_llevar, pay.id_txn
     FROM orders o
     LEFT JOIN neighborhoods n ON n.id = o.neighborhood_id
+    LEFT JOIN order_payments pay ON pay.order_id = o.order_id
 """
 
 

@@ -59,6 +59,8 @@ class Order:
     eta_minutes: Optional[float] = None
     route: Optional[List[str]] = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    para_llevar: bool = False  # kiosko: comer aquí o para llevar (solo canal local)
+    paid_txn: Optional[str] = None  # idTxn de la pasarela con que se pagó
 
     @property
     def total(self) -> float:

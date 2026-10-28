@@ -34,6 +34,7 @@
             <p class="subtitle">Elige del menú, indica el canal (mostrador o domicilio) y confirma. Si es domicilio, calculamos la ruta más corta con el grafo de barrios.</p>
 
             <form method="post" action="/pedidos" id="order-form">
+                <input type="hidden" name="pedido_token" value="{{ pedido_token }}" />
                 <fieldset class="canal">
                     <legend>¿Cómo lo quieres?</legend>
                     <div class="channel-toggle">

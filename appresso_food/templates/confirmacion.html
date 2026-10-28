@@ -35,8 +35,14 @@
         {% endif %}
         <p class="subtitle">
             Tu pedido quedó registrado como <strong>{{ order.status }}</strong> por el canal
-            <strong>{{ 'domicilio' if order.channel == 'domicilio' else 'local' }}</strong>.
+            <strong>{{ 'domicilio' if order.channel == 'domicilio' else 'local' }}</strong>{% if order.channel != 'domicilio' %},
+            <strong>{{ 'para llevar' if order.para_llevar else 'para comer aquí' }}</strong>{% endif %}.
         </p>
+        {% if order.paid_txn %}
+        <p class="subtitle" id="pagado">✅ Pagado con la transacción <strong>{{ order.paid_txn }}</strong>.</p>
+        {% else %}
+        <a class="boton" id="pagar" href="/transacciones?pedido={{ order.order_id }}&valor={{ order.total|int }}">Pagar {{ order.total|pesos }}</a>
+        {% endif %}
 
         <table>
             <tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr>
