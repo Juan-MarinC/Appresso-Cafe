@@ -1,0 +1,5 @@
+<nav class="subnav" aria-label="Módulo de gestos">
+  {% for clave, ruta, texto in [("pedir", "/gestos", "Pedir con gestos"), ("entrenar", "/entrenar", "Entrenar la red"), ("ml5", "/gestos/ml5", "ml5.js")] %}
+  <a href="{{ ruta }}" {% if clave == subpagina %}aria-current="page"{% endif %}>{{ texto }}</a>
+  {% endfor %}
+</nav>

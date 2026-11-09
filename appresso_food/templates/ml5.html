@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+{% set pagina = "gestos" %}
+{% set subpagina = "ml5" %}
+
+{% block titulo %}ml5.js en el kiosko - Appresso Food{% endblock %}
+
+{% block estilos %}
+  <link rel="stylesheet" href="/static/css/gestos.css">
+  <link rel="stylesheet" href="/static/css/ml5.css">
+{% endblock %}
+
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>ml5.js en el kiosko de gestos</h1>
+    <p>Cómo reconoce la mano, qué hace con los errores, cómo se entrenó y qué pasa con tus datos.</p>
+    {% include "_gestos_nav.html" %}
+  </div>
+</section>
+{% endblock %}
+
+{% block contenido %}
+<div class="ml5">
+<aside class="ml5__indice" aria-label="En esta página">
+  <ol>
+    <li><a href="#flujo">De la cámara al pedido</a></li>
+    <li><a href="#laboratorio">Laboratorio en vivo</a></li>
+    <li><a href="#camara">Sin permiso de cámara</a></li>
+    <li><a href="#digitales">Manos en fotos o pantallas</a></li>
+    <li><a href="#coordenadas">¿x, y o z?</a></li>
+    <li><a href="#dos-manos">Dos manos a la vez</a></li>
+    <li><a href="#superposicion">Manos superpuestas</a></li>
+    <li><a href="#entrenamiento">Cómo se entrenó</a></li>
+    <li><a href="#almacenamiento">¿Guardamos imágenes?</a></li>
+    <li><a href="#limitaciones">Limitaciones</a></li>
+    <li><a href="#costo">Costo de infraestructura</a></li>
+    <li><a href="#privacidad">Privacidad y seguridad</a></li>
+    <li><a href="#ley">Qué dice la ley</a></li>
+  </ol>
+</aside>
+
+<div class="ml5__contenido">
+
+<section class="panel ml5__seccion" id="flujo">
+  <p class="eyebrow">Arquitectura</p>
+  <h2>De la cámara al pedido</h2>
+  <ol class="flujo">
+    <li><strong>Cámara</strong><span>640 × 480, unas 20 imágenes por segundo</span></li>
+    <li><strong>ml5.handPose</strong><span>Modelo preentrenado: 21 puntos por mano, hasta 2 manos</span></li>
+    <li><strong>Elegir la mano</strong><span>Descarta las dudosas y usa la más cercana</span></li>
+    <li><strong>Leer el gesto</strong><span>Red propia de /entrenar o, si no hay, reglas de distancias</span></li>
+    <li><strong>Sostener 1,5 s</strong><span>Evita que un movimiento casual haga un pedido</span></li>
+    <li><strong>Formulario /pedidos</strong><span>El mismo de tocar un botón: al servidor solo llega el pedido</span></li>
+  </ol>
+  <p class="subtitle">Todo lo de la cámara ocurre en el navegador. ml5.js se apoya en TensorFlow.js, que usa la tarjeta gráfica del equipo (WebGL).</p>
+</section>
+
+<section class="panel ml5__seccion" id="laboratorio">
+  <p class="eyebrow">Pruébalo</p>
+  <h2>Laboratorio en vivo</h2>
+  <p class="subtitle">Muestra una o dos manos, o una mano en la pantalla del celular, y mira qué ve el modelo y cuál usaría el kiosko. Nada se guarda ni se envía.</p>
+  <div class="lab">
+    <div>
+      <div class="visor">
+        <video id="video" playsinline muted></video>
+        <canvas id="lienzo" aria-hidden="true"></canvas>
+        <div class="visor__inicio" id="visor-inicio">
+          <p>La imagen se procesa solo en este equipo.</p>
+          <button type="button" class="primary-btn" id="activar">Activar cámara</button>
+        </div>
+      </div>
+      <div class="estado" role="status" aria-live="polite">
+        <strong id="estado-titulo">Activa la cámara para empezar</strong>
+        <span id="estado-detalle"></span>
+      </div>
+      <p class="lab__leyenda"><span class="punto punto--usada"></span> mano que usa el kiosko <span class="punto punto--descartada"></span> mano descartada</p>
+    </div>
+    <div class="lab__datos">
+      <div class="dato-grande">
+        <div><strong id="lab-manos">–</strong><span>manos detectadas</span></div>
+        <div><strong id="lab-fps">–</strong><span>lecturas por segundo</span></div>
+      </div>
+      <div class="tabla-scroll">
+        <table class="lab__tabla">
+          <thead><tr><th>Mano</th><th>Confianza</th><th>Tamaño</th><th>Punta del índice (x, y · z3D)</th><th>Kiosko</th></tr></thead>
+          <tbody id="lab-filas"><tr><td colspan="5" class="vacio">Sin manos todavía.</td></tr></tbody>
+        </table>
+      </div>
+      <p class="lab__titulo">Los {{ entradas }} números que recibe la red (mano usada)</p>
+      <pre class="lab__numeros" id="lab-numeros">–</pre>
+    </div>
+  </div>
+</section>
+
+<section class="panel ml5__seccion" id="camara">
+  <p class="eyebrow">Pregunta</p>
+  <h2>¿Qué pasa si no le damos permiso a la cámara?</h2>
+  <p>El kiosko <strong>sigue funcionando</strong>: cada combo tiene su botón y se puede pedir tocando la pantalla. La cámara es opcional. Si algo falla, la página dice qué pasó y cómo arreglarlo, en vez de quedarse en blanco. Estos son los errores que manejamos:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Error del navegador</th><th>Cuándo pasa</th><th>Lo que ve el cliente</th></tr></thead>
+      <tbody id="tabla-errores">
+        <tr><td colspan="3">Activa JavaScript para ver los mensajes.</td></tr>
+      </tbody>
+      <tbody>
+        <tr><td><code>sin https</code></td><td>La página se abrió por http desde otro equipo: el navegador no ofrece la cámara</td><td>La cámara no está disponible aquí · Solo se permite en https o en localhost.</td></tr>
+        <tr><td><code>sin internet / CDN bloqueado</code></td><td>No se pudo descargar ml5.js o el modelo de manos (por ejemplo, un firewall bloquea unpkg.com)</td><td>Sin conexión a internet / No se pudo cargar el reconocimiento de manos</td></tr>
+        <tr><td><code>sin WebGL</code></td><td>El navegador no tiene aceleración gráfica</td><td>Este navegador no tiene aceleración gráfica (WebGL)</td></tr>
+        <tr><td><code>track ended</code></td><td>Se desconecta la cámara o se quita el permiso con la página abierta</td><td>Se perdió la cámara · vuelve a aparecer el botón Activar cámara</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="subtitle">Si el permiso se negó una vez, el navegador ya no vuelve a preguntar: hay que habilitarlo en el candado de la barra de direcciones. Con la pestaña oculta se pausa la lectura de la cámara para no gastar batería.</p>
+</section>
+
+<section class="panel ml5__seccion" id="digitales">
+  <p class="eyebrow">Error encontrado</p>
+  <h2>Reconocía manos en fotos y pantallas como si fueran reales</h2>
+  <p>handPose busca <em>formas</em> de mano: no sabe si la mano es de carne y hueso, de un afiche o de un monitor que está detrás. Además el kiosko le pedía <code>maxHands: 1</code>, así que si el modelo se quedaba con la mano de la pantalla, la de la persona ni siquiera se miraba.</p>
+  <p><strong>Cómo lo corregimos</strong> (en <code>GestosReglas.elegirMano</code>):</p>
+  <ol>
+    <li>Ahora se piden <strong>hasta 2 manos</strong>, así la persona no queda tapada por una mano del fondo.</li>
+    <li>Se descartan las manos con <strong>confianza menor al 85 %</strong> que reporta el modelo.</li>
+    <li>Se descartan las <strong>muy pequeñas</strong> (muñeca a nudillo menor al 7 % del alto de la imagen): una mano en una pantalla del fondo o a más de 1,5 m.</li>
+    <li>De las que quedan se usa <strong>la más grande</strong>, que es la de quien está frente al kiosko.</li>
+  </ol>
+  <p class="subtitle"><strong>Lo que no resuelve:</strong> una foto grande puesta muy cerca de la cámara sigue pareciendo una mano. Distinguir una mano viva de una imagen (prueba de vida) necesita una cámara de profundidad o un modelo antisuplantación, que ml5 no trae. Para un kiosko no es grave: alguien con una foto solo podría hacer un pedido que igual hay que pagar.</p>
+</section>
+
+<section class="panel ml5__seccion" id="coordenadas">
+  <p class="eyebrow">Pregunta</p>
+  <h2>¿Reconoce en x, en y o en z?</h2>
+  <p>En las tres, pero de forma distinta. Por cada uno de los 21 puntos ml5 entrega:</p>
+  <ul>
+    <li><strong>x, y</strong>: posición en la imagen, en píxeles (de 0 a 640 y de 0 a 480). La y crece hacia abajo.</li>
+    <li><strong>x3D, y3D, z3D</strong>: posición en metros respecto al centro de la mano. La <strong>z</strong> es la profundidad <em>dentro de la mano</em> (si un dedo está más adelante que la palma), no la distancia a la cámara. Mírala en el laboratorio: cambia al doblar el dedo hacia la cámara.</li>
+  </ul>
+  <p>El kiosko usa <strong>solo x e y</strong>, convertidos en {{ entradas }} números (21 puntos × 2). La z se calcula con una sola cámara normal, así que es una estimación con más ruido; los gestos del kiosko (dedos estirados, pulgar arriba, puño) se distinguen bien de frente sin ella. La distancia a la cámara la deducimos del <strong>tamaño</strong> de la mano en la imagen.</p>
+</section>
+
+<section class="panel ml5__seccion" id="dos-manos">
+  <p class="eyebrow">Pregunta</p>
+  <h2>¿Y si se muestran las dos manos?</h2>
+  <p>El modelo detecta las dos, pero <strong>el kiosko usa una sola: la más cercana</strong> (la que se ve más grande). La otra se ignora y la página lo dice: <em>«uso la mano más cercana»</em>.</p>
+  <p><strong>Por qué no sumarlas</strong> (por ejemplo, 2 dedos + 3 dedos = combo 5): los combos van del 1 al 4, y casi siempre la otra mano aparece sin querer (apoyada, rascándose, sosteniendo la billetera). Sumarlas haría pedidos que nadie pidió. Una mano, un gesto.</p>
+  <p><strong>Izquierda o derecha da igual:</strong> antes de dársela a la red, la mano izquierda se refleja para que se vea como una derecha, así un gesto con cualquiera de las dos significa lo mismo.</p>
+</section>
+
+<section class="panel ml5__seccion" id="superposicion">
+  <p class="eyebrow">Pregunta</p>
+  <h2>Manos superpuestas: ¿reconoce la más cercana o la más lejana?</h2>
+  <p>Cuando dos manos se cruzan, el detector de palmas de handPose ve dos recuadros casi encima uno del otro y se queda con el de <strong>mayor puntaje</strong> (supresión de no máximos): normalmente devuelve <strong>una sola mano</strong>, que suele ser la que está adelante porque se ve completa. A veces mezcla puntos de las dos.</p>
+  <p>Si devuelve dos, nuestra regla escoge <strong>la más cercana</strong> (la más grande). Y como el gesto debe sostenerse 1,5 segundos sin cambiar, una lectura revuelta de un instante no dispara ninguna acción. Recomendación en pantalla: una sola mano frente a la cámara.</p>
+</section>
+
+<section class="panel ml5__seccion" id="entrenamiento">
+  <p class="eyebrow">Pregunta</p>
+  <h2>¿Cómo se entrenó?</h2>
+  <p>Hay dos modelos, y solo uno lo entrenamos nosotros:</p>
+  <div class="dos-columnas">
+    <div class="tarjeta">
+      <h3>handPose (preentrenado)</h3>
+      <p>Lo entrenó Google (MediaPipe Hands) con decenas de miles de fotos de manos reales con sus 21 puntos marcados a mano, más imágenes sintéticas de manos en 3D. Nosotros solo lo usamos: encuentra la mano y entrega los puntos.</p>
+    </div>
+    <div class="tarjeta">
+      <h3>Nuestra red de gestos</h3>
+      <p>La entrenamos en <a href="/entrenar">/entrenar</a> con <code>ml5.neuralNetwork</code>. Traduce los {{ entradas }} números de una mano a uno de {{ clases|length }} gestos.</p>
+    </div>
+  </div>
+  <p><strong>Pasos del entrenamiento:</strong></p>
+  <ol>
+    <li><strong>Grabar ejemplos:</strong> se elige un gesto y se sostiene 3 segundos frente a la cámara; cada lectura (unas 20 por segundo) es un ejemplo. Mínimo {{ minimo }} por gesto, moviendo la mano, acercándola y alejándola.</li>
+    <li><strong>Gestos que aprende:</strong> {% for clave, nombre in clases %}{{ nombre }}{{ ", " if not loop.last else "" }}{% endfor %}. «Mano relajada» existe para que la red pueda decir «esto no es un gesto».</li>
+    <li><strong>Preparar los números:</strong> cada punto se mide desde la muñeca y se divide por el tamaño de la mano. Así no importa dónde está la mano en la imagen ni qué tan cerca.</li>
+    <li><strong>Entrenar:</strong> con el 80 % de los ejemplos, 60 épocas, lotes de 32. La red es pequeña: {{ entradas }} entradas → {{ ocultas }} neuronas ocultas → {{ clases|length }} salidas, {{ parametros }} números ajustables.</li>
+    <li><strong>Evaluar:</strong> con el 20 % que la red nunca vio; la página muestra la precisión por gesto.</li>
+    <li><strong>Usar:</strong> /gestos solo hace caso a la red si está segura en un 80 % o más. Si no hay red guardada, usa reglas de distancias (un dedo está estirado si su punta queda lejos de la muñeca).</li>
+  </ol>
+  <p><strong>¿Con qué mano?</strong> Con cualquiera: la izquierda se refleja como derecha, así que basta entrenar con una. Aun así recomendamos grabar con las dos y con varias personas para que la red no se acostumbre a una sola mano.</p>
+  <p class="estado-modelo" id="estado-modelo">Consultando el modelo guardado…</p>
+</section>
+
+<section class="panel ml5__seccion" id="almacenamiento">
+  <p class="eyebrow">Pregunta</p>
+  <h2>¿Guardamos imágenes o videos? ¿No es muy pesado?</h2>
+  <p><strong>No guardamos ni imágenes ni videos.</strong> Sería pesado, lento de entrenar y un riesgo de privacidad. Guardamos coordenadas:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Qué</th><th>Cuántos números</th><th>Tamaño aproximado</th></tr></thead>
+      <tbody>
+        <tr><td>Una imagen de 640 × 480 a color</td><td>921 600</td><td>900 KB sin comprimir (unos 40 KB en JPG)</td></tr>
+        <tr><td>3 segundos de video (60 imágenes)</td><td>55 millones</td><td>55 MB sin comprimir</td></tr>
+        <tr><td><strong>Un ejemplo nuestro</strong> (21 puntos × x, y)</td><td><strong>{{ entradas }}</strong></td><td><strong>menos de 1 KB</strong></td></tr>
+        <tr><td>{{ minimo }} ejemplos × {{ clases|length }} gestos</td><td>{{ entradas * minimo * clases|length }}</td><td>unos 200 KB</td></tr>
+        <tr><td><strong>El modelo entrenado</strong></td><td>{{ parametros }}</td><td><strong>{{ pesos_kb }} KB</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="subtitle">Entrenar con imágenes exigiría una red convolucional, miles de fotos y una GPU potente. Con coordenadas, la red entrena en segundos en el navegador y aprende con pocos ejemplos, porque handPose ya hizo el trabajo difícil de encontrar la mano.</p>
+</section>
+
+<section class="panel ml5__seccion" id="limitaciones">
+  <p class="eyebrow">Hay que saberlo</p>
+  <h2>Limitaciones de la app</h2>
+  <ul class="limites">
+    <li><strong>Luz y distancia:</strong> con poca luz o a más de ~1,5 m los puntos tiemblan; la página pide acercarse.</li>
+    <li><strong>Primera carga lenta:</strong> ml5.js pesa unos 4,5 MB y luego descarga el modelo de manos. Después queda en la caché.</li>
+    <li><strong>Depende del equipo:</strong> en un computador sin buena tarjeta gráfica bajan las lecturas por segundo.</li>
+    <li><strong>Necesita https e internet:</strong> la cámara solo funciona en https o localhost, y ml5 se descarga de un CDN que un firewall puede bloquear.</li>
+    <li><strong>Solo gestos quietos:</strong> reconoce poses, no movimientos (saludar, lengua de señas con movimiento).</li>
+    <li><strong>Gestos parecidos:</strong> la palma abierta con el pulgar pegado se lee como 4 dedos.</li>
+    <li><strong>Pocos ejemplos = red confundida:</strong> si se entrena con una sola persona, puede fallar con manos distintas.</li>
+    <li><strong>No detecta vida:</strong> una foto grande cerca de la cámara cuenta como mano (ver arriba).</li>
+    <li><strong>Una persona a la vez:</strong> el kiosko atiende a la mano más cercana.</li>
+  </ul>
+</section>
+
+<section class="panel ml5__seccion" id="costo">
+  <p class="eyebrow">Hay que saberlo</p>
+  <h2>Costo de infraestructura</h2>
+  <div class="dos-columnas">
+    <div class="tarjeta">
+      <h3>Lo que no pagamos</h3>
+      <p>Ningún servidor con GPU ni servicio de visión en la nube que cobre por imagen: el reconocimiento corre en el equipo del cliente. El servidor solo entrega la página y recibe el pedido, igual que antes. Costo por uso de la IA: <strong>$0</strong>.</p>
+    </div>
+    <div class="tarjeta">
+      <h3>Lo que sí cuesta</h3>
+      <p>El kiosko (tableta o computador con cámara), la conexión para la primera descarga (unos 4,5 MB de ml5 más el modelo de manos) y el tiempo de grabar ejemplos para entrenar. El modelo propio ocupa {{ pesos_kb }} KB.</p>
+    </div>
+  </div>
+</section>
+
+<section class="panel ml5__seccion" id="privacidad">
+  <p class="eyebrow">Hay que saberlo</p>
+  <h2>Privacidad y seguridad: ¿salen las coordenadas de tu rostro?</h2>
+  <p><strong>No.</strong> El kiosko usa solo <code>handPose</code> (manos). No carga <code>faceMesh</code>, así que <strong>ni siquiera calcula puntos de la cara</strong>. La cara se ve en el video, pero el video nunca sale del navegador.</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Página</th><th>Qué se procesa</th><th>Qué llega al servidor</th></tr></thead>
+      <tbody>
+        <tr><td>/gestos (pedir)</td><td>Video y puntos de la mano, en memoria; se descartan en cada imagen</td><td>Solo el pedido: combos, cantidades y el nombre si lo escribes</td></tr>
+        <tr><td>/entrenar</td><td>Puntos de la mano de quien entrena (con su autorización)</td><td>El modelo y los ejemplos (números, no fotos). Los ejemplos van a una carpeta privada que no se publica</td></tr>
+        <tr><td>/gestos/ml5</td><td>Video y puntos, en memoria</td><td>Nada</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Medidas de seguridad:</strong></p>
+  <ul>
+    <li>Los ejemplos de entrenamiento antes quedaban en <code>/static</code>, descargables por cualquiera a través de ngrok. Ahora están en <code>datos_privados/</code> y solo se leen o borran desde el mismo equipo del servidor.</li>
+    <li>Guardar un modelo exige un token que solo recibe quien abre /entrenar en el equipo del servidor, no por ngrok.</li>
+    <li>ml5.js se carga con una huella SRI: si el CDN entregara un archivo alterado, el navegador no lo ejecuta.</li>
+    <li>La cámara solo se enciende cuando el cliente pulsa el botón, y el navegador muestra que está activa.</li>
+  </ul>
+</section>
+
+<section class="panel ml5__seccion" id="ley">
+  <p class="eyebrow">Colombia</p>
+  <h2>Qué dice la ley e informar al usuario</h2>
+  <p>La <strong>Ley 1581 de 2012</strong> (protección de datos personales) y el <strong>Decreto 1377 de 2013</strong> (hoy en el Decreto 1074 de 2015) aplican a cualquier dato que identifique a una persona. La autoridad es la <strong>Superintendencia de Industria y Comercio (SIC)</strong>.</p>
+  <ul>
+    <li><strong>Los datos biométricos son sensibles</strong> (art. 5). Los 21 puntos normalizados de una mano difícilmente identifican a alguien, pero por precaución los tratamos como sensibles.</li>
+    <li><strong>Autorización previa, expresa e informada</strong> (arts. 6 y 9), y nadie está obligado a entregar datos sensibles: debe haber una alternativa.</li>
+    <li><strong>Deber de informar</strong> (art. 12): para qué se usan los datos, que es opcional y qué derechos tiene la persona.</li>
+    <li><strong>Derechos del titular</strong> (art. 8): conocer, actualizar, rectificar y <strong>pedir que se borren</strong> sus datos.</li>
+  </ul>
+  <p><strong>Cómo lo cumple la app:</strong></p>
+  <ul>
+    <li><strong>/gestos</strong> avisa antes de encender la cámara que la imagen no se graba ni se envía y que no se leen datos de la cara. Usar la cámara es opcional: se puede pedir tocando.</li>
+    <li><strong>/entrenar</strong> no deja encender la cámara sin marcar la casilla de autorización, que explica qué se guarda y para qué.</li>
+    <li><strong>/entrenar</strong> tiene el botón «Borrar las muestras del servidor» para ejercer el derecho de supresión.</li>
+  </ul>
+  <p class="subtitle">Resumen académico, no asesoría legal. Para operar un kiosko real hay que verificarlo con las fuentes oficiales (SIC, texto de la ley) y publicar una política de tratamiento de datos.</p>
+</section>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/gestos-reglas.js"></script>
+<script src="/static/js/camara-mano.js"></script>
+<script src="/static/js/ml5-lab.js"></script>
+{% endblock %}

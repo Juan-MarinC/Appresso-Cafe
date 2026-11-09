@@ -2,7 +2,7 @@
 // Ejecutar: node --test tests/gestos_reglas.test.js
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { clasificar, clave, crearTemporizador, muyLejos, rasgos, desdeClave, CLASES } = require("../appresso_food/static/js/gestos-reglas.js");
+const { clasificar, clave, crearTemporizador, muyLejos, elegirMano, rasgos, desdeClave, CLASES } = require("../appresso_food/static/js/gestos-reglas.js");
 
 // Mano derecha de frente, coordenadas de imagen (la y crece hacia abajo). Muñeca en (0, 100).
 function mano({ dedos = [], pulgar = "doblado" }) {
@@ -118,4 +118,52 @@ test("cada clase de la red se traduce al gesto del kiosko", () => {
     assert.deepEqual(desdeClave("confirmar"), { tipo: "confirmar" });
     assert.equal(desdeClave("nada"), null);
     for (const k of CLASES.filter((c) => c !== "nada")) assert.equal(clave(desdeClave(k)), k);
+});
+
+// --- Qué mano usa el kiosko cuando handPose devuelve varias (o una de una foto o pantalla) ---
+
+// La misma mano de prueba agrandada o achicada desde la muñeca, con la confianza que reportaría handPose.
+function escalada(factor, confidence = 0.98) {
+    const m = mano({ dedos: D.slice(0, 2) });
+    for (const p of Object.values(m)) {
+        p.x *= factor;
+        p.y = 100 + (p.y - 100) * factor;
+    }
+    return Object.assign(m, { confidence });
+}
+
+test("sin manos no elige ninguna ni pide acercarse", () => {
+    assert.deepEqual(elegirMano([], 480), { mano: null, lejos: false, revisadas: [] });
+    assert.equal(elegirMano(undefined, 480).mano, null);
+});
+
+test("con dos manos usa la más grande (la más cercana) y dice por qué descarta la otra", () => {
+    const cerca = escalada(1.5), lejos = escalada(1);
+    const r = elegirMano([lejos, cerca], 480);
+    assert.equal(r.mano, cerca);
+    assert.equal(r.revisadas.find((x) => x.mano === lejos).motivo, "otra mano más cercana");
+    assert.equal(r.revisadas.find((x) => x.mano === cerca).motivo, null);
+});
+
+test("una mano con poca confianza no se usa aunque sea la más grande", () => {
+    const dudosa = escalada(2, 0.5), real = escalada(1);
+    const r = elegirMano([dudosa, real], 480);
+    assert.equal(r.mano, real);
+    assert.equal(r.revisadas[0].motivo, "poca confianza");
+});
+
+test("una mano pequeña (pantalla del fondo) se descarta; si es la única, se pide acercarse", () => {
+    const pantalla = escalada(0.4);
+    const sola = elegirMano([pantalla], 480);
+    assert.equal(sola.mano, null);
+    assert.equal(sola.lejos, true);
+    assert.equal(sola.revisadas[0].motivo, "muy lejos o muy pequeña");
+    const conPersona = elegirMano([pantalla, escalada(1)], 480);
+    assert.notEqual(conPersona.mano, null);
+    assert.equal(conPersona.lejos, false);
+});
+
+test("sin el dato de confianza (pruebas o versiones viejas de ml5) la mano se acepta", () => {
+    const m = mano({ dedos: D.slice(0, 1) });
+    assert.equal(elegirMano([m], 480).mano, m);
 });

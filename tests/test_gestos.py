@@ -193,15 +193,16 @@ class ModeloGestosTest(unittest.TestCase):
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self._original = gestos_api.MODELO_DIR
+        self._original = gestos_api.MODELO_DIR, gestos_api.MUESTRAS
         gestos_api.MODELO_DIR = Path(self._tmp.name) / "gestos"
+        gestos_api.MUESTRAS = Path(self._tmp.name) / "privado" / "muestras_gestos.json"
         app = FastAPI()
         app.include_router(gestos_api.router)
         app.include_router(paginas.router)
         self.client = TestClient(app)
 
     def tearDown(self):
-        gestos_api.MODELO_DIR = self._original
+        gestos_api.MODELO_DIR, gestos_api.MUESTRAS = self._original
         os.environ.pop("APPRESSO_ENTRENAMIENTO", None)
         self._tmp.cleanup()
 
@@ -272,6 +273,60 @@ class ModeloGestosTest(unittest.TestCase):
         html = self.client.get("/entrenar").text
         self.assertEqual(html.count('class="clase"'), len(paginas.CLASES_GESTOS))
         self.assertIn('data-minimo="30"', html)
+        # Ley 1581: sin marcar la autorización no se puede encender la cámara.
+        self.assertIn('id="consentimiento"', html)
+        self.assertRegex(html, r'id="activar" disabled')
+        self.assertIn('href="/gestos/ml5"', html)
+
+    def test_las_muestras_van_a_una_carpeta_privada(self):
+        os.environ["APPRESSO_ENTRENAMIENTO"] = "1"
+        muestras = json.dumps({"clases": ["combo1"], "muestras": [{"x": [0.1] * 42, "y": "combo1"}]})
+        gestos_api.MODELO_DIR.mkdir(parents=True)
+        (gestos_api.MODELO_DIR / "muestras.json").write_text("{}")  # copia pública de una versión anterior
+        respuesta = self.client.post("/api/gestos/modelo", files=self._archivos(**{"muestras.json": muestras}),
+                                     headers={"X-Entrenamiento-Token": gestos_api.TOKEN})
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertTrue(gestos_api.MUESTRAS.exists())
+        self.assertFalse((gestos_api.MODELO_DIR / "muestras.json").exists())  # nada de la mano queda en /static
+
+    def test_las_muestras_solo_se_leen_y_borran_desde_el_equipo(self):
+        gestos_api.MUESTRAS.parent.mkdir(parents=True)
+        gestos_api.MUESTRAS.write_text(json.dumps({"clases": [], "muestras": []}))
+        token = {"X-Entrenamiento-Token": gestos_api.TOKEN}
+        self.assertEqual(self.client.get("/api/gestos/muestras", headers=token).status_code, 403)  # otro equipo
+        self.assertEqual(self.client.delete("/api/gestos/muestras", headers=token).status_code, 403)
+        os.environ["APPRESSO_ENTRENAMIENTO"] = "1"
+        self.assertEqual(self.client.get("/api/gestos/muestras").status_code, 403)  # sin token
+        por_tunel = self.client.get("/api/gestos/muestras", headers={**token, "Origin": "https://otro-sitio.example"})
+        self.assertEqual(por_tunel.status_code, 403)
+        self.assertEqual(self.client.get("/api/gestos/muestras", headers=token).json(), {"clases": [], "muestras": []})
+        self.assertEqual(self.client.delete("/api/gestos/muestras", headers=token).json(), {"ok": True, "borradas": True})
+        self.assertFalse(gestos_api.MUESTRAS.exists())
+        self.assertEqual(self.client.get("/api/gestos/muestras", headers=token).status_code, 404)
+
+
+class Ml5PaginaTest(unittest.TestCase):
+    """Submódulo /gestos/ml5: responde las preguntas de la exposición dentro del módulo de gestos."""
+
+    def setUp(self):
+        app = FastAPI()
+        app.include_router(paginas.router)
+        self.client = TestClient(app)
+
+    def test_responde_cada_pregunta(self):
+        respuesta = self.client.get("/gestos/ml5")
+        self.assertEqual(respuesta.status_code, 200)
+        for seccion in ("laboratorio", "camara", "digitales", "coordenadas", "dos-manos", "superposicion",
+                        "entrenamiento", "almacenamiento", "limitaciones", "costo", "privacidad", "ley"):
+            self.assertIn(f'id="{seccion}"', respuesta.text)
+        self.assertIn("ml5-lab.js", respuesta.text)
+        self.assertIn('aria-current="page">ml5.js', respuesta.text)
+
+    def test_tamano_de_la_red_coincide_con_la_de_ml5(self):
+        # 42 entradas -> 16 ocultas -> 8 gestos, cada capa con sus sesgos.
+        html = self.client.get("/gestos/ml5").text
+        self.assertIn("824 números ajustables", html)
+        self.assertIn("3.2 KB", html)
 
 
 if __name__ == "__main__":

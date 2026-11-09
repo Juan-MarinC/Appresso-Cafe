@@ -141,3 +141,14 @@
 .clase--lista .clase__cuenta { background: var(--marca); color: #fff; }
 .entreno__fila { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 18px; }
 .entreno__precision { margin: 12px 0 6px; font-size: 1.1rem; }
+
+/* Submenú del módulo de gestos: Pedir · Entrenar · ml5.js */
+.subnav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.subnav a { padding: 7px 16px; border: 2px solid var(--marca); border-radius: 999px; color: var(--marca-oscura); font-weight: 700; text-decoration: none; background: var(--panel); }
+.subnav a:hover { background: var(--crema-3); }
+.subnav a[aria-current="page"] { background: var(--marca); color: #fff; }
+
+.visor__inicio a { color: var(--resalte); }
+/* Autorización antes de grabar en /entrenar */
+.consentimiento { display: flex; gap: 10px; align-items: flex-start; max-width: 46ch; text-align: left; font-size: 14px; font-weight: 600; color: var(--crema); cursor: pointer; }
+.consentimiento input { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--resalte); }

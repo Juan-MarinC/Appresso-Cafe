@@ -4,7 +4,7 @@
     const MS_PREPARAR = 1500;    // cuenta regresiva para poner la mano antes de grabar
     const MS_GRABAR = 3000;
     const EPOCAS = 60;
-    const { rasgos, muyLejos, CLASES } = window.GestosReglas;
+    const { rasgos, elegirMano, CLASES } = window.GestosReglas;
     const $ = (id) => document.getElementById(id);
     const MINIMO = Number($("clases").dataset.minimo);  // ejemplos por gesto antes de poder entrenar (lo fija el servidor)
     const TOKEN = $("clases").dataset.token;            // solo viene si esta página se abrió en el equipo del servidor
@@ -34,18 +34,18 @@
     }
 
     function alDetectar(manos) {
-        const mano = manos[0];
         const ahora = performance.now();
+        // La más cercana: así no se graba la mano de otra persona, de una foto o de una pantalla del fondo.
+        const { mano, lejos } = elegirMano(manos, video.videoHeight);
         CamaraMano.dibujar(lienzo, video, mano, conexiones);
-        const lejos = mano && muyLejos(mano, video.videoHeight);
 
         if (grabando) {
             if (ahora < grabando.desde) {
                 $("lectura").textContent = `Prepárate: ${nombre(grabando.clase)}…`;
             } else if (ahora <= grabando.hasta) {
-                if (mano && !lejos) muestras.push({ x: rasgos(mano), y: grabando.clase });
+                if (mano) muestras.push({ x: rasgos(mano), y: grabando.clase });
                 $("progreso-barra").style.width = `${Math.round(((ahora - grabando.desde) / MS_GRABAR) * 100)}%`;
-                $("lectura").textContent = mano ? (lejos ? "Acércate un poco" : `Grabando ${nombre(grabando.clase)}…`) : "No veo tu mano";
+                $("lectura").textContent = lejos ? "Acércate un poco" : mano ? `Grabando ${nombre(grabando.clase)}…` : "No veo tu mano";
                 contar();
             } else {
                 mostrar(`Listo: ${nombre(grabando.clase)}`, "Elige otro gesto o vuelve a grabar el mismo con la mano en otra posición");
@@ -55,7 +55,7 @@
             }
             return;
         }
-        if (probando && red && mano && !lejos && !prediciendo) {
+        if (probando && red && mano && !prediciendo) {
             prediciendo = true;
             red.classify(rasgos(mano))
                 .then((r) => {
@@ -64,7 +64,7 @@
                 })
                 .finally(() => { prediciendo = false; });
         } else if (!probando) {
-            $("lectura").textContent = mano ? (lejos ? "Acércate un poco a la cámara" : "Mano detectada") : "No veo tu mano";
+            $("lectura").textContent = lejos ? "Acércate un poco a la cámara" : mano ? "Mano detectada" : "No veo tu mano";
         }
     }
 
@@ -153,8 +153,10 @@
         estadoModelo();
     }
 
+    // Las muestras son datos de la mano de quien entrenó: no están en /static, solo se leen y borran desde este equipo.
     async function cargarMuestras() {
-        const respuesta = await fetch("/static/modelos/gestos/muestras.json", { cache: "no-store" });
+        if (!TOKEN) return mostrar("Solo desde el equipo del servidor", "Las muestras guardadas no se comparten por ngrok ni por la red");
+        const respuesta = await fetch("/api/gestos/muestras", { cache: "no-store", headers: { "X-Entrenamiento-Token": TOKEN } });
         if (!respuesta.ok) return mostrar("Todavía no hay muestras guardadas", "Graba ejemplos y guarda un modelo primero");
         const datos = await respuesta.json();
         muestras = datos.muestras.filter((m) => CLASES.includes(m.y) && Array.isArray(m.x) && m.x.length === 42);
@@ -169,11 +171,24 @@
             : "Todavía no hay un modelo guardado: /gestos usa las reglas de distancias.";
     }
 
+    async function borrarDelServidor() {
+        if (!confirm("¿Borrar del servidor las muestras guardadas? El modelo entrenado se conserva: no contiene los puntos de la mano.")) return;
+        const respuesta = await fetch("/api/gestos/muestras", { method: "DELETE", headers: { "X-Entrenamiento-Token": TOKEN } });
+        const r = await respuesta.json();
+        mostrar(respuesta.ok ? "Muestras borradas del servidor" : "No se pudo borrar", respuesta.ok ? (r.borradas ? "Ya no queda ningún ejemplo guardado" : "No había muestras guardadas") : r.mensaje);
+    }
+
     async function activar() {
         $("activar").disabled = true;
         const modelo = await CamaraMano.iniciar({
             video, alDetectar, avisar: mostrar,
             alEncender: () => { $("visor-inicio").hidden = true; },
+            alPerder: () => {
+                $("visor-inicio").hidden = false;
+                $("activar").disabled = !$("consentimiento").checked;
+                grabando = null;
+                document.querySelectorAll(".clase").forEach((b) => { b.disabled = true; });
+            },
         });
         if (!modelo) {
             $("activar").disabled = false;
@@ -186,7 +201,10 @@
     }
 
     document.querySelectorAll(".clase").forEach((b) => b.addEventListener("click", () => grabar(b.dataset.clase)));
+    // Ley 1581 de 2012: los datos de la mano se tratan como sensibles, así que se pide autorización expresa antes de grabar.
+    $("consentimiento").addEventListener("change", (e) => { $("activar").disabled = !e.target.checked; });
     $("activar").addEventListener("click", activar);
+    $("borrar-servidor").addEventListener("click", borrarDelServidor);
     $("entrenar").addEventListener("click", entrenar);
     $("guardar").addEventListener("click", guardar);
     $("probar").addEventListener("click", () => {

@@ -11,3 +11,4 @@ appresso_food/appresso_food.db
 # Datos personales: secretos y lo que graba /entrenar (puntos de la mano de quien entrena)
 .env
 appresso_food/static/modelos/gestos/
+appresso_food/datos_privados/

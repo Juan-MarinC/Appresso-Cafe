@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% set pagina = "entrenar" %}
+{% set pagina = "gestos" %}
+{% set subpagina = "entrenar" %}
 
 {% block titulo %}Entrenar gestos - Appresso Food{% endblock %}
 
@@ -12,6 +13,7 @@
   <div class="pagina-cabeza__fila">
     <h1>Entrenar la red de gestos</h1>
     <p>Graba ejemplos de cada gesto con tu mano y entrena una red neuronal con ml5.js. Todo ocurre en este navegador.</p>
+    {% include "_gestos_nav.html" %}
   </div>
 </section>
 {% endblock %}
@@ -24,8 +26,12 @@
             <video id="video" playsinline muted></video>
             <canvas id="lienzo" aria-hidden="true"></canvas>
             <div class="visor__inicio" id="visor-inicio">
-                <p>La imagen se procesa solo en este equipo. Se guardan únicamente los 21 puntos de la mano, nunca la foto.</p>
-                <button type="button" class="primary-btn" id="activar">Activar cámara</button>
+                <p>La imagen se procesa solo en este equipo. Se guardan únicamente los 21 puntos de la mano, nunca la foto ni la cara.</p>
+                <label class="consentimiento">
+                    <input type="checkbox" id="consentimiento">
+                    <span>Autorizo que Appresso Food guarde los puntos de mi mano (no la imagen) para entrenar la red de gestos. Es opcional y puedo pedir que se borren cuando quiera. <a href="/gestos/ml5#ley">Más información</a></span>
+                </label>
+                <button type="button" class="primary-btn" id="activar" disabled>Activar cámara</button>
             </div>
         </div>
         <div class="estado" role="status" aria-live="polite">
@@ -50,6 +56,7 @@
         <div class="entreno__fila">
             <button type="button" class="button secondary" id="cargar-muestras">Cargar las muestras guardadas</button>
             <button type="button" class="button secondary" id="borrar-muestras">Empezar de cero</button>
+            <button type="button" class="button secondary" id="borrar-servidor" {% if not token %}disabled{% endif %}>Borrar las muestras del servidor</button>
         </div>
 
         <h2>2. Entrena y evalúa</h2>

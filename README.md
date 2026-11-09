@@ -155,7 +155,13 @@ navegador con ml5.js (`ml5.handPose`): no se graba ni se envía ninguna imagen.
 | Ruta | Qué hace |
 |---|---|
 | `/gestos` | Kiosko: comer aquí o para llevar (1 o 2 dedos), elegir combo y cantidad con los dedos, 👍 agrega al carrito y confirma, ✊ cancela o quita el último, palma abierta pide ayuda. También funciona tocando. |
-| `/entrenar` | Graba ejemplos de cada gesto, entrena una red con `ml5.neuralNetwork`, muestra la precisión y guarda el modelo (solo desde el mismo equipo del servidor). Si no hay modelo, `/gestos` usa reglas de distancias. |
+| `/entrenar` | Graba ejemplos de cada gesto, entrena una red con `ml5.neuralNetwork`, muestra la precisión y guarda el modelo (solo desde el mismo equipo del servidor). Si no hay modelo, `/gestos` usa reglas de distancias. Pide autorización antes de encender la cámara y permite borrar las muestras del servidor. |
+| `/gestos/ml5` | Submódulo para la exposición: laboratorio en vivo (hasta 2 manos, x/y/z, cuál usa el kiosko, los 42 números) y respuestas sobre errores de cámara, manos en fotos o pantallas, dos manos, superposición, entrenamiento, almacenamiento, limitaciones, costo, privacidad y Ley 1581 de 2012. |
+
+Qué mano se usa: handPose busca hasta 2 manos; se descartan las de confianza menor al 85 % o muy pequeñas
+(una mano en una foto o pantalla del fondo) y se usa la más grande, que es la más cercana (`GestosReglas.elegirMano`).
+Las muestras de `/entrenar` (puntos de la mano) se guardan en `appresso_food/datos_privados/`, fuera de `/static`, y
+solo se leen (`GET /api/gestos/muestras`) o borran (`DELETE`) desde el mismo equipo del servidor.
 | `/turnos` | Pantalla de turnos: pedidos del local en preparación y listos. |
 | `/cocina` | Además de la cola: avisos de ayuda del kiosko, pedidos para llevar y si están pagados. |
 

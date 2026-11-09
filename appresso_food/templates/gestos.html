@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% set pagina = "gestos" %}
+{% set subpagina = "pedir" %}
 
 {% block titulo %}Pedir con gestos - Appresso Food{% endblock %}
 
@@ -12,6 +13,7 @@
   <div class="pagina-cabeza__fila">
     <h1>Pedir con gestos</h1>
     <p>Elige tu combo con la mano, sin hablar: pensado para personas sordas o con dificultad para hablar.</p>
+    {% include "_gestos_nav.html" %}
   </div>
 </section>
 {% endblock %}
@@ -24,7 +26,7 @@
             <video id="video" playsinline muted></video>
             <canvas id="lienzo" aria-hidden="true"></canvas>
             <div class="visor__inicio" id="visor-inicio">
-                <p>La imagen se procesa solo en este equipo: no se graba ni se envía a ningún lado.</p>
+                <p>La imagen se procesa solo en este equipo: no se graba ni se envía a ningún lado. Solo se leen los puntos de tu mano, nunca tu cara. Activarla es opcional: también puedes pedir tocando. <a href="/gestos/ml5#privacidad">¿Qué hacemos con la cámara?</a></p>
                 <button type="button" class="primary-btn" id="activar">Activar cámara</button>
             </div>
         </div>

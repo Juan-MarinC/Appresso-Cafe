@@ -5,7 +5,7 @@
     const CONFIANZA = 0.8;  // por debajo, la red "duda" y no se toma ninguna acción
     const MS_SOSTENER = (k) => (k === "ayuda" ? 3000 : 1500);  // la ayuda pide más tiempo para no activarse sin querer
     const MS_INACTIVO = 30000;  // kiosko: si nadie hace nada, la siguiente persona no hereda el pedido
-    const { clasificar, clave, crearTemporizador, muyLejos, rasgos, desdeClave } = window.GestosReglas;
+    const { clasificar, clave, crearTemporizador, elegirMano, rasgos, desdeClave } = window.GestosReglas;
     const $ = (id) => document.getElementById(id);
     const combos = [...document.querySelectorAll(".combo")];
     const video = $("video"), lienzo = $("lienzo");
@@ -198,11 +198,11 @@
             ultimaActividad = ahora;
             mostrar("Listo: muestra de 1 a 4 dedos", red ? "Reconoce los gestos la red neuronal entrenada" : "Sostén el gesto hasta que la barra se llene");
         }
-        const mano = manos[0];
+        // Con dos manos (o una en una foto o pantalla del fondo) se usa la más cercana; ver GestosReglas.elegirMano.
+        const { mano, lejos, revisadas } = elegirMano(manos, video.videoHeight);
         CamaraMano.dibujar(lienzo, video, mano, conexiones);
-        const lejos = mano && muyLejos(mano, video.videoHeight);
-        if (!mano || lejos) prediccion = null;
-        const gesto = mano && !lejos ? leerGesto(mano) : null;
+        if (!mano) prediccion = null;
+        const gesto = mano ? leerGesto(mano) : null;
         const k = clave(gesto);
         if (gesto) {
             ultimoGesto[k] = gesto;
@@ -211,8 +211,9 @@
         const r = temporizador(k, ahora);
         $("progreso-barra").style.width = `${Math.round(r.progreso * 100)}%`;
         const seguridad = red && gesto ? ` · red ${Math.round(prediccion.confidence * 100)} %` : "";
+        const otra = revisadas.length > 1 ? " · uso la mano más cercana" : "";
         $("lectura").textContent = lejos ? "Acércate un poco a la cámara"
-            : gesto ? texto(gesto) + seguridad : mano ? "No reconozco ese gesto" : "No veo tu mano";
+            : gesto ? texto(gesto) + seguridad + otra : mano ? "No reconozco ese gesto" : "No veo tu mano";
         if (r.disparar) actuar(ultimoGesto[r.clave]);
         if ((elegido || carrito.length || paraLlevar !== null) && ahora - ultimaActividad > MS_INACTIVO) reiniciar();
     }
@@ -224,6 +225,12 @@
             video, alDetectar, avisar: mostrar,
             sinCamara: " Puedes tocar un combo para pedir.",
             alEncender: () => { $("visor-inicio").hidden = true; },
+            alPerder: () => {
+                $("visor-inicio").hidden = false;
+                $("activar").disabled = false;
+                CamaraMano.dibujar(lienzo, video, null, conexiones);
+                $("lectura").textContent = "";
+            },
         });
         if (!modelo) {
             $("activar").disabled = false;

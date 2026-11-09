@@ -1,0 +1,50 @@
+/* Submódulo /gestos/ml5: índice fijo a la izquierda y una tarjeta por pregunta */
+.ml5 { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+.ml5__indice { position: sticky; top: 16px; }
+.ml5__indice ol { margin: 0; padding: 14px 14px 14px 34px; border-left: 4px solid var(--marca); background: var(--panel); border-radius: 0 14px 14px 0; font-size: 15px; }
+.ml5__indice li { margin: 4px 0; }
+.ml5__indice a { color: var(--text); text-decoration: none; font-weight: 600; }
+.ml5__indice a:hover { color: var(--marca); text-decoration: underline; }
+.ml5__contenido { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
+.ml5__seccion { scroll-margin-top: 16px; }
+.ml5__seccion > p, .ml5__seccion li { max-width: 75ch; }
+.ml5__seccion h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+.ml5__seccion table { margin: 10px 0 14px; }
+.ml5 code { padding: 1px 6px; border-radius: 6px; background: var(--crema-3); font-size: .9em; }
+
+.flujo { list-style: none; counter-reset: paso; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; padding: 0; margin: 0 0 14px; }
+.flujo li { counter-increment: paso; position: relative; padding: 14px 12px 12px; border: 2px solid var(--border); border-radius: 14px; background: #fff; }
+.flujo li::before { content: counter(paso); display: grid; place-items: center; width: 28px; height: 28px; margin-bottom: 6px; border-radius: 50%; background: var(--marca); color: #fff; font-weight: 800; font-size: 14px; }
+.flujo strong { display: block; color: var(--marca-oscura); }
+.flujo span { display: block; font-size: 14px; color: var(--muted); }
+
+.dos-columnas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 10px 0 14px; }
+.tarjeta { padding: 16px; border-radius: 14px; background: var(--crema-3); border: 1px solid var(--border); }
+.tarjeta h3 { margin-bottom: 6px; font-size: 1.15rem; }
+.tarjeta p { margin: 0; }
+
+.limites { padding-left: 20px; }
+.limites li { margin: 6px 0; }
+.estado-modelo { margin: 12px 0 0; padding: 12px 16px; border-radius: 12px; background: var(--crema); font-weight: 700; color: var(--marca-oscura); }
+
+.lab { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-top: 14px; align-items: start; }
+.lab__datos .dato-grande { margin-bottom: 8px; }
+.lab__tabla td, .lab__tabla th { font-size: 14px; }
+.lab__tabla tr.usada td { background: #fdecea; }
+.lab__tabla tr.descartada td { color: var(--muted); }
+.lab__tabla .vacio { color: var(--muted); }
+.lab__titulo { margin: 14px 0 6px; font-weight: 700; }
+.lab__numeros { margin: 0; padding: 12px; max-height: 140px; overflow: auto; border-radius: 12px; background: var(--text); color: var(--crema); font-size: 12px; white-space: pre-wrap; word-break: break-word; }
+.lab__leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.punto { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+.punto--usada { background: #D62B1F; }
+.punto--descartada { background: #9A8F86; }
+
+@media (max-width: 1000px) {
+    .lab { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+    .ml5 { grid-template-columns: minmax(0, 1fr); }
+    .ml5__indice { position: static; }
+    .dos-columnas { grid-template-columns: 1fr; }
+}

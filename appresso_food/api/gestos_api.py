@@ -3,6 +3,9 @@
 Guardar escribe archivos en el servidor, así que exige un token secreto que /entrenar solo entrega a quien la abre
 en el mismo equipo, directo (no por ngrok ni otro proxy) y desde el mismo sitio. La IP sola no basta: por ngrok
 todo llega desde 127.0.0.1, y como CORS permite cualquier origen, otra página podría leer /entrenar con fetch.
+
+Las muestras (los puntos de la mano de quien entrenó) son datos personales: no se guardan en static/, que cualquiera
+puede descargar, sino en datos_privados/, y solo se leen o borran con el mismo token.
 """
 
 import json
@@ -15,11 +18,12 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Request
 
 from appresso_food.api.api_helpers import error_response
-from appresso_food.web import STATIC_DIR
+from appresso_food.web import BASE_DIR, STATIC_DIR
 
 router = APIRouter()
 
 MODELO_DIR = STATIC_DIR / "modelos" / "gestos"
+MUESTRAS = BASE_DIR / "datos_privados" / "muestras_gestos.json"
 LOCALES = {"127.0.0.1", "::1", "localhost"}
 CABECERAS_PROXY = ("x-forwarded-for", "forwarded", "x-real-ip", "x-forwarded-host", "x-forwarded-proto", "via",
                    "cf-connecting-ip", "true-client-ip")
@@ -49,6 +53,18 @@ def token_para(request: Request) -> Optional[str]:
     return TOKEN if permitido and _mismo_sitio(request) else None
 
 
+def _autorizado(request: Request) -> bool:
+    recibido = request.headers.get("x-entrenamiento-token", "")
+    return bool(token_para(request)) and secrets.compare_digest(recibido, TOKEN)
+
+
+def _escribir(destino, datos: bytes):
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    temporal = destino.with_name(destino.name + ".tmp")
+    temporal.write_bytes(datos)
+    temporal.replace(destino)  # reemplazo atómico: nunca se lee un archivo a medias
+
+
 @router.get("/api/gestos/modelo")
 async def model_status():
     """Si ya hay un modelo entrenado, cuándo se guardó y qué clases conoce."""
@@ -65,8 +81,7 @@ async def model_status():
 @router.post("/api/gestos/modelo", status_code=201)
 async def save_model(request: Request):
     """Recibe model.json, model.weights.bin y model_meta.json (y opcionalmente muestras.json) desde /entrenar."""
-    recibido = request.headers.get("x-entrenamiento-token", "")
-    if not token_para(request) or not secrets.compare_digest(recibido, TOKEN):
+    if not _autorizado(request):
         return error_response(403, "SOLO_LOCAL", "El modelo solo se puede guardar desde /entrenar abierta en el mismo equipo del servidor.")
     form = await request.form()
     contenido = {}
@@ -90,9 +105,28 @@ async def save_model(request: Request):
     if "weightsManifest" not in json.loads(contenido["model.json"]):
         return error_response(400, "MODELO_INVALIDO", "model.json no trae weightsManifest: no es un modelo de TensorFlow.js.")
 
-    MODELO_DIR.mkdir(parents=True, exist_ok=True)
     for nombre, datos in contenido.items():
-        temporal = MODELO_DIR / (nombre + ".tmp")
-        temporal.write_bytes(datos)
-        temporal.replace(MODELO_DIR / nombre)  # reemplazo atómico: /gestos nunca lee un archivo a medias
+        _escribir(MUESTRAS if nombre == "muestras.json" else MODELO_DIR / nombre, datos)
+    (MODELO_DIR / "muestras.json").unlink(missing_ok=True)  # copia pública de versiones anteriores
     return {"ok": True, "archivos": sorted(contenido), "carpeta": "/static/modelos/gestos/"}
+
+
+@router.get("/api/gestos/muestras")
+async def training_samples(request: Request):
+    """Las muestras guardadas, para seguir entrenando. Solo desde /entrenar en el mismo equipo del servidor."""
+    if not _autorizado(request):
+        return error_response(403, "SOLO_LOCAL", "Las muestras son datos de la mano de quien entrenó: solo se leen desde el mismo equipo del servidor.")
+    if not MUESTRAS.exists():
+        return error_response(404, "SIN_MUESTRAS", "Todavía no hay muestras guardadas.")
+    return json.loads(MUESTRAS.read_text(encoding="utf-8"))
+
+
+@router.delete("/api/gestos/muestras")
+async def delete_training_samples(request: Request):
+    """Borra las muestras (derecho de supresión, Ley 1581 de 2012). El modelo se conserva: no guarda los puntos."""
+    if not _autorizado(request):
+        return error_response(403, "SOLO_LOCAL", "Las muestras solo se borran desde /entrenar en el mismo equipo del servidor.")
+    borradas = MUESTRAS.exists() or (MODELO_DIR / "muestras.json").exists()
+    MUESTRAS.unlink(missing_ok=True)
+    (MODELO_DIR / "muestras.json").unlink(missing_ok=True)
+    return {"ok": True, "borradas": borradas}

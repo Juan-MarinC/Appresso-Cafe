@@ -104,6 +104,22 @@ async def train_page(request: Request):
                                                       "token": gestos_api.token_para(request) or ""})
 
 
+# Red de /entrenar: 42 números de entrada, una capa oculta de 16 neuronas (la que ml5.neuralNetwork crea por defecto
+# para clasificar) y una salida por gesto. Cada capa tiene un peso por conexión más un sesgo por neurona.
+ENTRADAS_RED, OCULTAS_RED = 42, 16
+
+
+@router.get("/gestos/ml5")
+async def ml5_page(request: Request):
+    """Submódulo de exposición: cómo usa el kiosko ml5.js, sus límites, privacidad y la ley, con un laboratorio en vivo."""
+    clases = len(CLASES_GESTOS)
+    parametros = ENTRADAS_RED * OCULTAS_RED + OCULTAS_RED + OCULTAS_RED * clases + clases
+    return templates.TemplateResponse("ml5.html", {
+        "request": request, "clases": CLASES_GESTOS, "minimo": MINIMO_EJEMPLOS, "entradas": ENTRADAS_RED,
+        "ocultas": OCULTAS_RED, "parametros": parametros, "pesos_kb": round(parametros * 4 / 1024, 1),
+    })
+
+
 # --- Pantalla de turnos: lo que se prepara y lo que ya se puede recoger en el mostrador ---
 LISTOS_EN_PANTALLA = 6
 

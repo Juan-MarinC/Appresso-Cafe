@@ -34,6 +34,30 @@
     const LEJOS = 0.07;  // muñeca→nudillo medio como fracción del alto del video; ~1,5 m con una cámara de portátil
     const muyLejos = (mano, altoVideo) => dist(mano.wrist, mano.middle_finger_mcp) < altoVideo * LEJOS;
 
+    // handPose busca hasta 2 manos y no sabe si son reales: una mano en una foto, un afiche o una pantalla del fondo
+    // también cuenta. Con maxHands: 1 el modelo podía quedarse con esa y no ver a la persona. Por eso se piden 2 y
+    // se descartan las de poca confianza o muy pequeñas; de las que quedan se usa la más grande, que es la más cercana.
+    const CONFIANZA_MANO = 0.85;
+
+    /**
+     * Qué mano usar de las que devolvió handPose. Devuelve {mano, lejos, revisadas}: `mano` es la elegida (o null),
+     * `lejos` indica que solo había manos muy pequeñas (hay que pedir que se acerque) y `revisadas` trae cada mano
+     * con su tamaño y el motivo por el que se descartó (null para la elegida).
+     */
+    function elegirMano(manos, altoVideo) {
+        const revisadas = (manos || []).map((mano) => {
+            const confianza = mano.confidence ?? 1;
+            const motivo = confianza < CONFIANZA_MANO ? "poca confianza"
+                : muyLejos(mano, altoVideo) ? "muy lejos o muy pequeña" : null;
+            return { mano, tamano: dist(mano.wrist, mano.middle_finger_mcp), confianza, motivo };
+        });
+        const validas = revisadas.filter((r) => !r.motivo).sort((a, b) => b.tamano - a.tamano);
+        validas.slice(1).forEach((r) => { r.motivo = "otra mano más cercana"; });
+        const mano = validas.length ? validas[0].mano : null;
+        const lejos = !mano && revisadas.some((r) => r.motivo === "muy lejos o muy pequeña");
+        return { mano, lejos, revisadas };
+    }
+
     /**
      * Un gesto solo cuenta si se sostiene `msNecesarios` (un número, o una función clave -> ms para
      * pedir más tiempo a ciertos gestos). Parpadeos de otro gesto más cortos que
@@ -75,7 +99,7 @@
         return k.startsWith("combo") ? { tipo: "combo", numero: Number(k.slice(5)) } : { tipo: k };
     }
 
-    const api = { clasificar, clave, crearTemporizador, muyLejos, rasgos, desdeClave, CLASES };
+    const api = { clasificar, clave, crearTemporizador, muyLejos, elegirMano, CONFIANZA_MANO, rasgos, desdeClave, CLASES };
     if (typeof module !== "undefined" && module.exports) module.exports = api;
     else raiz.GestosReglas = api;
 })(typeof window !== "undefined" ? window : globalThis);
