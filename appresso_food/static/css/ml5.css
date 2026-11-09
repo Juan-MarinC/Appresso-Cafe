@@ -48,3 +48,41 @@
     .ml5__indice { position: static; }
     .dos-columnas { grid-template-columns: 1fr; }
 }
+
+/* Exposición: partes numeradas, índice agrupado, capas, mano de 21 puntos y código */
+.ml5__parte { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-top: 18px; padding-bottom: 8px; border-bottom: 3px solid var(--marca); scroll-margin-top: 16px; }
+.ml5__parte:first-child { margin-top: 0; }
+.ml5__parte span { padding: 3px 12px; border-radius: 999px; background: var(--marca); color: #fff; font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; }
+.ml5__parte h2 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.2rem); color: var(--marca-oscura); }
+.ml5__indice > ol > li { margin: 10px 0 4px; }
+.ml5__indice > ol > li > a { color: var(--marca-oscura); font-weight: 800; }
+.ml5__indice ol ol { padding: 0 0 0 14px; border: 0; background: none; border-radius: 0; list-style: none; font-size: 14px; }
+.ml5__indice ol ol a { font-weight: 500; }
+.ml5__indice { max-height: calc(100vh - 32px); overflow: auto; }
+
+.capas { list-style: none; display: grid; gap: 8px; padding: 0; margin: 10px 0 14px; }
+.capas li { display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 4px 14px; align-items: center; padding: 12px 14px; border-left: 6px solid var(--marca); border-radius: 0 12px 12px 0; background: var(--crema-3); }
+.capas li:nth-child(2) { margin-left: 16px; }
+.capas li:nth-child(3) { margin-left: 32px; }
+.capas li:nth-child(4) { margin-left: 48px; }
+.capas strong { color: var(--marca-oscura); }
+.capas span { color: var(--text); font-size: 15px; }
+.capas--red li { margin-left: 0 !important; }
+
+.handpose { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 20px; align-items: start; }
+.mano-svg { margin: 0; padding: 12px; border-radius: 14px; background: var(--crema-3); text-align: center; }
+.mano-svg svg { width: 100%; max-width: 220px; height: auto; }
+.mano-svg__huesos polyline { fill: none; stroke: var(--muted); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+.mano-svg__puntos circle { fill: var(--text); }
+.mano-svg__puntos .clave { fill: var(--marca); }
+.mano-svg__numeros text { font-size: 12px; font-weight: 800; fill: var(--marca-oscura); text-anchor: middle; }
+.mano-svg figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+.codigo { margin: 10px 0 14px; padding: 16px; overflow-x: auto; border-radius: 12px; background: var(--text); color: var(--crema); font-size: 13px; line-height: 1.55; }
+.codigo code { padding: 0; background: none; color: inherit; }
+.codigo .c { color: #b9aa9b; font-style: italic; }
+
+@media (max-width: 700px) {
+    .handpose { grid-template-columns: 1fr; }
+    .capas li { grid-template-columns: 1fr; margin-left: 0 !important; }
+}

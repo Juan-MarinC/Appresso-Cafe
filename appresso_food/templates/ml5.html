@@ -13,7 +13,7 @@
 <section class="pagina-cabeza">
   <div class="pagina-cabeza__fila">
     <h1>ml5.js en el kiosko de gestos</h1>
-    <p>Cómo reconoce la mano, qué hace con los errores, cómo se entrenó y qué pasa con tus datos.</p>
+    <p>Exposición: qué es la librería, cómo funciona, cómo la implementamos en el kiosko y las respuestas a las preguntas de clase.</p>
     {% include "_gestos_nav.html" %}
   </div>
 </section>
@@ -23,27 +23,182 @@
 <div class="ml5">
 <aside class="ml5__indice" aria-label="En esta página">
   <ol>
-    <li><a href="#flujo">De la cámara al pedido</a></li>
-    <li><a href="#laboratorio">Laboratorio en vivo</a></li>
-    <li><a href="#camara">Sin permiso de cámara</a></li>
-    <li><a href="#digitales">Manos en fotos o pantallas</a></li>
-    <li><a href="#coordenadas">¿x, y o z?</a></li>
-    <li><a href="#dos-manos">Dos manos a la vez</a></li>
-    <li><a href="#superposicion">Manos superpuestas</a></li>
-    <li><a href="#entrenamiento">Cómo se entrenó</a></li>
-    <li><a href="#almacenamiento">¿Guardamos imágenes?</a></li>
-    <li><a href="#limitaciones">Limitaciones</a></li>
-    <li><a href="#costo">Costo de infraestructura</a></li>
-    <li><a href="#privacidad">Privacidad y seguridad</a></li>
-    <li><a href="#ley">Qué dice la ley</a></li>
+    <li><a href="#parte-1">Introducción</a>
+      <ol>
+        <li><a href="#que-es">¿Qué es ml5.js?</a></li>
+        <li><a href="#por-que">¿Por qué la usamos?</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-2">Cómo funciona la librería</a>
+      <ol>
+        <li><a href="#como-funciona">Capas por dentro</a></li>
+        <li><a href="#handpose">handPose: 21 puntos</a></li>
+        <li><a href="#red-neuronal">neuralNetwork</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-3">Cómo lo implementamos</a>
+      <ol>
+        <li><a href="#flujo">Arquitectura</a></li>
+        <li><a href="#codigo">El código</a></li>
+        <li><a href="#entrenamiento">Cómo se entrenó</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-4">Demostración en vivo</a>
+      <ol>
+        <li><a href="#laboratorio">Laboratorio</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-5">Preguntas de la exposición</a>
+      <ol>
+        <li><a href="#camara">Sin permiso de cámara</a></li>
+        <li><a href="#digitales">Manos en fotos o pantallas</a></li>
+        <li><a href="#coordenadas">¿x, y o z?</a></li>
+        <li><a href="#dos-manos">Dos manos a la vez</a></li>
+        <li><a href="#superposicion">Manos superpuestas</a></li>
+        <li><a href="#almacenamiento">¿Guardamos imágenes?</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-6">Consideraciones</a>
+      <ol>
+        <li><a href="#limitaciones">Limitaciones</a></li>
+        <li><a href="#costo">Costo de infraestructura</a></li>
+        <li><a href="#privacidad">Privacidad y seguridad</a></li>
+        <li><a href="#ley">Qué dice la ley</a></li>
+      </ol>
+    </li>
+    <li><a href="#parte-7">Cierre</a>
+      <ol>
+        <li><a href="#conclusiones">Conclusiones</a></li>
+      </ol>
+    </li>
   </ol>
 </aside>
 
 <div class="ml5__contenido">
 
+<div class="ml5__parte" id="parte-1"><span>Parte 1</span><h2>Introducción</h2></div>
+
+<section class="panel ml5__seccion" id="que-es">
+  <p class="eyebrow">Introducción</p>
+  <h2>¿Qué es ml5.js?</h2>
+  <p><strong>ml5.js</strong> es una librería de JavaScript, de código abierto, para usar <strong>aprendizaje automático (machine learning) directamente en el navegador</strong>. La creó el programa ITP de la Universidad de Nueva York (NYU) en 2018, con la idea de que artistas, estudiantes y desarrolladores pudieran usar inteligencia artificial sin saber matemáticas avanzadas ni montar servidores.</p>
+  <div class="dos-columnas">
+    <div class="tarjeta">
+      <h3>Qué trae</h3>
+      <p>Modelos ya entrenados que se usan con una o dos líneas de código, y una red neuronal sencilla que uno mismo puede entrenar con sus propios datos.</p>
+    </div>
+    <div class="tarjeta">
+      <h3>Dónde corre</h3>
+      <p>En el navegador del usuario: Chrome, Edge, Firefox o Safari, en computador, tableta o celular. No necesita instalar nada ni un servidor con IA.</p>
+    </div>
+  </div>
+  <p><strong>Modelos más usados de ml5:</strong></p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Modelo</th><th>Qué hace</th><th>¿Lo usamos?</th></tr></thead>
+      <tbody>
+        <tr><td><code>handPose</code></td><td>Encuentra manos y sus 21 puntos (dedos, nudillos, muñeca)</td><td><strong>Sí</strong>: es el que lee la mano</td></tr>
+        <tr><td><code>neuralNetwork</code></td><td>Red neuronal propia que se entrena con tus datos</td><td><strong>Sí</strong>: aprende nuestros gestos</td></tr>
+        <tr><td><code>faceMesh</code></td><td>468 puntos de la cara</td><td>No (por privacidad)</td></tr>
+        <tr><td><code>bodyPose</code></td><td>Puntos del cuerpo: hombros, codos, rodillas</td><td>No</td></tr>
+        <tr><td><code>imageClassifier</code></td><td>Dice qué hay en una foto (perro, taza, carro…)</td><td>No</td></tr>
+        <tr><td><code>soundClassifier</code></td><td>Reconoce palabras o sonidos por el micrófono</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel ml5__seccion" id="por-que">
+  <p class="eyebrow">Introducción</p>
+  <h2>¿Por qué la usamos en Appresso?</h2>
+  <p>Queríamos un kiosko donde el cliente pueda <strong>pedir un combo sin tocar la pantalla</strong>, mostrando con la mano el número del combo (1, 2, 3 o 4 dedos) y confirmando con el pulgar arriba. Escogimos ml5.js porque:</p>
+  <ul>
+    <li><strong>Es gratis y corre en el navegador:</strong> no hay que pagar un servicio de visión en la nube por cada imagen.</li>
+    <li><strong>Protege la privacidad:</strong> el video nunca sale del equipo del cliente.</li>
+    <li><strong>Es fácil de integrar:</strong> nuestra app ya es una página web (FastAPI + HTML), así que solo agregamos un script.</li>
+    <li><strong>Permite entrenar sin GPU:</strong> la red de gestos se entrena en segundos en el mismo navegador.</li>
+  </ul>
+</section>
+
+<div class="ml5__parte" id="parte-2"><span>Parte 2</span><h2>Cómo funciona la librería</h2></div>
+
+<section class="panel ml5__seccion" id="como-funciona">
+  <p class="eyebrow">La librería</p>
+  <h2>¿Cómo funciona por dentro?</h2>
+  <p>ml5.js es una capa amigable encima de otras herramientas. Cada capa hace una parte del trabajo:</p>
+  <ol class="capas">
+    <li><strong>Nuestro código</strong><span>Llama a <code>ml5.handPose()</code> y recibe los puntos de la mano</span></li>
+    <li><strong>ml5.js</strong><span>Esconde la complejidad: descarga el modelo, prepara la imagen y traduce el resultado a objetos fáciles de leer</span></li>
+    <li><strong>TensorFlow.js</strong><span>La librería de Google que ejecuta redes neuronales en JavaScript</span></li>
+    <li><strong>WebGL (tarjeta gráfica)</strong><span>Hace las multiplicaciones de matrices en paralelo; por eso es lo bastante rápido para video en vivo</span></li>
+  </ol>
+  <p>El patrón de uso es siempre el mismo: <strong>1)</strong> cargar el modelo, <strong>2)</strong> darle una entrada (imagen, video, números), <strong>3)</strong> recibir el resultado en una función. Con video, ml5 repite el paso 2 en cada cuadro mientras la cámara esté encendida.</p>
+</section>
+
+<section class="panel ml5__seccion" id="handpose">
+  <p class="eyebrow">La librería</p>
+  <h2>handPose: de la imagen a 21 puntos</h2>
+  <div class="handpose">
+    <div>
+      <p>handPose está basado en <strong>MediaPipe Hands</strong> de Google y trabaja en <strong>dos etapas</strong>:</p>
+      <ol>
+        <li><strong>Detector de palmas:</strong> recorre la imagen buscando palmas y dibuja un recuadro alrededor de cada una. Buscar la palma es más fácil que buscar la mano entera, porque la palma casi no cambia de forma.</li>
+        <li><strong>Modelo de puntos:</strong> recorta ese recuadro y calcula la posición de <strong>21 puntos</strong>: la muñeca y 4 por cada dedo.</li>
+      </ol>
+      <p>Por cada mano entrega:</p>
+      <ul>
+        <li><code>keypoints</code>: los 21 puntos con <code>x</code> e <code>y</code> en píxeles.</li>
+        <li><code>keypoints3D</code>: los mismos en metros, con profundidad <code>z</code>.</li>
+        <li><code>handedness</code>: si es la mano izquierda o la derecha.</li>
+        <li><code>confidence</code>: qué tan seguro está el modelo (de 0 a 1).</li>
+      </ul>
+    </div>
+    <figure class="mano-svg">
+      <svg viewBox="0 0 200 215" role="img" aria-labelledby="mano-titulo">
+        <title id="mano-titulo">Los 21 puntos de la mano: 0 es la muñeca, 4 la punta del pulgar, 8 la del índice, 12 la del medio, 16 la del anular y 20 la del meñique</title>
+        <g class="mano-svg__huesos">
+          <polyline points="100,190 70,170 50,145 38,120 28,98"/>
+          <polyline points="100,190 78,120 72,85 68,60 65,38"/>
+          <polyline points="78,120 100,115 120,120 138,132 100,190"/>
+          <polyline points="100,115 100,78 100,52 100,28"/>
+          <polyline points="120,120 126,86 130,62 133,42"/>
+          <polyline points="138,132 150,108 158,90 164,72"/>
+        </g>
+        <g class="mano-svg__puntos">
+          <circle cx="100" cy="190" r="6" class="clave"/>
+          <circle cx="70" cy="170" r="4"/><circle cx="50" cy="145" r="4"/><circle cx="38" cy="120" r="4"/><circle cx="28" cy="98" r="6" class="clave"/>
+          <circle cx="78" cy="120" r="4"/><circle cx="72" cy="85" r="4"/><circle cx="68" cy="60" r="4"/><circle cx="65" cy="38" r="6" class="clave"/>
+          <circle cx="100" cy="115" r="4"/><circle cx="100" cy="78" r="4"/><circle cx="100" cy="52" r="4"/><circle cx="100" cy="28" r="6" class="clave"/>
+          <circle cx="120" cy="120" r="4"/><circle cx="126" cy="86" r="4"/><circle cx="130" cy="62" r="4"/><circle cx="133" cy="42" r="6" class="clave"/>
+          <circle cx="138" cy="132" r="4"/><circle cx="150" cy="108" r="4"/><circle cx="158" cy="90" r="4"/><circle cx="164" cy="72" r="6" class="clave"/>
+        </g>
+        <g class="mano-svg__numeros">
+          <text x="100" y="208">0</text><text x="14" y="96">4</text><text x="58" y="26">8</text>
+          <text x="100" y="16">12</text><text x="140" y="32">16</text><text x="176" y="68">20</text>
+        </g>
+      </svg>
+      <figcaption>0 muñeca · 4 pulgar · 8 índice · 12 medio · 16 anular · 20 meñique</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="panel ml5__seccion" id="red-neuronal">
+  <p class="eyebrow">La librería</p>
+  <h2>neuralNetwork: enseñarle a la app nuestros gestos</h2>
+  <p>handPose sabe <em>dónde</em> están los dedos, pero no sabe qué significa «3 dedos» o «pulgar arriba». Para eso usamos <code>ml5.neuralNetwork</code>, una red neuronal pequeña que aprende con ejemplos:</p>
+  <ol class="capas capas--red">
+    <li><strong>{{ entradas }} entradas</strong><span>Los 21 puntos de la mano × (x, y)</span></li>
+    <li><strong>{{ ocultas }} neuronas ocultas</strong><span>Combinan los números y encuentran patrones (por ejemplo, «el índice está estirado»)</span></li>
+    <li><strong>{{ clases|length }} salidas</strong><span>Una probabilidad por gesto; gana la más alta</span></li>
+  </ol>
+  <p><strong>¿Cómo aprende?</strong> Le mostramos muchos ejemplos ya marcados («estos números son 2 dedos»). La red adivina, compara con la respuesta correcta y ajusta sus {{ parametros }} números internos para equivocarse menos. Cada vuelta completa a los ejemplos se llama <strong>época</strong>. Esto se llama <strong>aprendizaje supervisado</strong> de tipo <strong>clasificación</strong>.</p>
+</section>
+
+<div class="ml5__parte" id="parte-3"><span>Parte 3</span><h2>Cómo lo implementamos</h2></div>
+
 <section class="panel ml5__seccion" id="flujo">
-  <p class="eyebrow">Arquitectura</p>
-  <h2>De la cámara al pedido</h2>
+  <p class="eyebrow">Implementación</p>
+  <h2>Arquitectura: de la cámara al pedido</h2>
   <ol class="flujo">
     <li><strong>Cámara</strong><span>640 × 480, unas 20 imágenes por segundo</span></li>
     <li><strong>ml5.handPose</strong><span>Modelo preentrenado: 21 puntos por mano, hasta 2 manos</span></li>
@@ -55,8 +210,74 @@
   <p class="subtitle">Todo lo de la cámara ocurre en el navegador. ml5.js se apoya en TensorFlow.js, que usa la tarjeta gráfica del equipo (WebGL).</p>
 </section>
 
+<section class="panel ml5__seccion" id="codigo">
+  <p class="eyebrow">Implementación</p>
+  <h2>El código, paso a paso</h2>
+  <p>Así se ve lo esencial (simplificado de <code>static/js/camara-mano.js</code>, <code>gestos.js</code> y <code>entrenar.js</code>):</p>
+<pre class="codigo"><code><span class="c">// 1. Cargar ml5 desde el CDN (con huella SRI para que no lo alteren)</span>
+&lt;script src="https://unpkg.com/ml5@1.4.0/dist/ml5.min.js"&gt;&lt;/script&gt;
+
+<span class="c">// 2. Encender la cámara (el navegador pide permiso)</span>
+video.srcObject = await navigator.mediaDevices.getUserMedia({ video: true });
+
+<span class="c">// 3. Cargar handPose y leer la mano en cada cuadro</span>
+const modelo = await ml5.handPose({ maxHands: 2 });
+modelo.detectStart(video, (manos) =&gt; {
+  const { mano } = elegirMano(manos, video.videoHeight); <span class="c">// la más cercana y confiable</span>
+  if (mano) red.classify(rasgos(mano));                 <span class="c">// 42 números → gesto</span>
+});
+
+<span class="c">// 4. Entrenar la red de gestos (en /entrenar)</span>
+const red = ml5.neuralNetwork({ task: "classification" });
+red.addData(rasgos(mano), ["combo2"]);                <span class="c">// un ejemplo por cuadro</span>
+red.normalizeData();
+await red.train({ epochs: 60, batchSize: 32 });</code></pre>
+  <p><strong>Archivos del submódulo de gestos:</strong></p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th>Archivo</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>camara-mano.js</code></td><td>Cámara, carga de ml5, manejo de errores y dibujo de los puntos</td></tr>
+        <tr><td><code>gestos-reglas.js</code></td><td>Elegir la mano, convertirla en {{ entradas }} números y reglas de respaldo</td></tr>
+        <tr><td><code>gestos.js</code></td><td>Página /gestos: leer el gesto, sostenerlo y enviar el pedido</td></tr>
+        <tr><td><code>entrenar.js</code></td><td>Página /entrenar: grabar ejemplos, entrenar y guardar la red</td></tr>
+        <tr><td><code>api/gestos_api.py</code></td><td>Servidor: guarda el modelo y los ejemplos (privados) con token</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel ml5__seccion" id="entrenamiento">
+  <p class="eyebrow">Implementación</p>
+  <h2>¿Cómo se entrenó? ¿Con qué mano?</h2>
+  <p>Hay dos modelos, y solo uno lo entrenamos nosotros:</p>
+  <div class="dos-columnas">
+    <div class="tarjeta">
+      <h3>handPose (preentrenado)</h3>
+      <p>Lo entrenó Google (MediaPipe Hands) con decenas de miles de fotos de manos reales con sus 21 puntos marcados a mano, más imágenes sintéticas de manos en 3D. Nosotros solo lo usamos: encuentra la mano y entrega los puntos.</p>
+    </div>
+    <div class="tarjeta">
+      <h3>Nuestra red de gestos</h3>
+      <p>La entrenamos en <a href="/entrenar">/entrenar</a> con <code>ml5.neuralNetwork</code>. Traduce los {{ entradas }} números de una mano a uno de {{ clases|length }} gestos.</p>
+    </div>
+  </div>
+  <p><strong>Pasos del entrenamiento:</strong></p>
+  <ol>
+    <li><strong>Grabar ejemplos:</strong> se elige un gesto y se sostiene 3 segundos frente a la cámara; cada lectura (unas 20 por segundo) es un ejemplo. Mínimo {{ minimo }} por gesto, moviendo la mano, acercándola y alejándola.</li>
+    <li><strong>Gestos que aprende:</strong> {% for clave, nombre in clases %}{{ nombre }}{{ ", " if not loop.last else "" }}{% endfor %}. «Mano relajada» existe para que la red pueda decir «esto no es un gesto».</li>
+    <li><strong>Preparar los números:</strong> cada punto se mide desde la muñeca y se divide por el tamaño de la mano. Así no importa dónde está la mano en la imagen ni qué tan cerca.</li>
+    <li><strong>Entrenar:</strong> con el 80 % de los ejemplos, 60 épocas, lotes de 32. La red es pequeña: {{ entradas }} entradas → {{ ocultas }} neuronas ocultas → {{ clases|length }} salidas, {{ parametros }} números ajustables.</li>
+    <li><strong>Evaluar:</strong> con el 20 % que la red nunca vio; la página muestra la precisión por gesto.</li>
+    <li><strong>Usar:</strong> /gestos solo hace caso a la red si está segura en un 80 % o más. Si no hay red guardada, usa reglas de distancias (un dedo está estirado si su punta queda lejos de la muñeca).</li>
+  </ol>
+  <p><strong>¿Con qué mano?</strong> Con cualquiera: la izquierda se refleja como derecha, así que basta entrenar con una. Aun así recomendamos grabar con las dos y con varias personas para que la red no se acostumbre a una sola mano.</p>
+  <p class="estado-modelo" id="estado-modelo">Consultando el modelo guardado…</p>
+</section>
+
+<div class="ml5__parte" id="parte-4"><span>Parte 4</span><h2>Demostración en vivo</h2></div>
+
 <section class="panel ml5__seccion" id="laboratorio">
-  <p class="eyebrow">Pruébalo</p>
+  <p class="eyebrow">Demostración</p>
   <h2>Laboratorio en vivo</h2>
   <p class="subtitle">Muestra una o dos manos, o una mano en la pantalla del celular, y mira qué ve el modelo y cuál usaría el kiosko. Nada se guarda ni se envía.</p>
   <div class="lab">
@@ -92,8 +313,10 @@
   </div>
 </section>
 
+<div class="ml5__parte" id="parte-5"><span>Parte 5</span><h2>Preguntas de la exposición</h2></div>
+
 <section class="panel ml5__seccion" id="camara">
-  <p class="eyebrow">Pregunta</p>
+  <p class="eyebrow">Pregunta 1</p>
   <h2>¿Qué pasa si no le damos permiso a la cámara?</h2>
   <p>El kiosko <strong>sigue funcionando</strong>: cada combo tiene su botón y se puede pedir tocando la pantalla. La cámara es opcional. Si algo falla, la página dice qué pasó y cómo arreglarlo, en vez de quedarse en blanco. Estos son los errores que manejamos:</p>
   <div class="tabla-scroll">
@@ -114,7 +337,7 @@
 </section>
 
 <section class="panel ml5__seccion" id="digitales">
-  <p class="eyebrow">Error encontrado</p>
+  <p class="eyebrow">Pregunta 2</p>
   <h2>Reconocía manos en fotos y pantallas como si fueran reales</h2>
   <p>handPose busca <em>formas</em> de mano: no sabe si la mano es de carne y hueso, de un afiche o de un monitor que está detrás. Además el kiosko le pedía <code>maxHands: 1</code>, así que si el modelo se quedaba con la mano de la pantalla, la de la persona ni siquiera se miraba.</p>
   <p><strong>Cómo lo corregimos</strong> (en <code>GestosReglas.elegirMano</code>):</p>
@@ -128,7 +351,7 @@
 </section>
 
 <section class="panel ml5__seccion" id="coordenadas">
-  <p class="eyebrow">Pregunta</p>
+  <p class="eyebrow">Pregunta 3</p>
   <h2>¿Reconoce en x, en y o en z?</h2>
   <p>En las tres, pero de forma distinta. Por cada uno de los 21 puntos ml5 entrega:</p>
   <ul>
@@ -139,7 +362,7 @@
 </section>
 
 <section class="panel ml5__seccion" id="dos-manos">
-  <p class="eyebrow">Pregunta</p>
+  <p class="eyebrow">Pregunta 4</p>
   <h2>¿Y si se muestran las dos manos?</h2>
   <p>El modelo detecta las dos, pero <strong>el kiosko usa una sola: la más cercana</strong> (la que se ve más grande). La otra se ignora y la página lo dice: <em>«uso la mano más cercana»</em>.</p>
   <p><strong>Por qué no sumarlas</strong> (por ejemplo, 2 dedos + 3 dedos = combo 5): los combos van del 1 al 4, y casi siempre la otra mano aparece sin querer (apoyada, rascándose, sosteniendo la billetera). Sumarlas haría pedidos que nadie pidió. Una mano, un gesto.</p>
@@ -147,41 +370,14 @@
 </section>
 
 <section class="panel ml5__seccion" id="superposicion">
-  <p class="eyebrow">Pregunta</p>
+  <p class="eyebrow">Pregunta 5</p>
   <h2>Manos superpuestas: ¿reconoce la más cercana o la más lejana?</h2>
   <p>Cuando dos manos se cruzan, el detector de palmas de handPose ve dos recuadros casi encima uno del otro y se queda con el de <strong>mayor puntaje</strong> (supresión de no máximos): normalmente devuelve <strong>una sola mano</strong>, que suele ser la que está adelante porque se ve completa. A veces mezcla puntos de las dos.</p>
   <p>Si devuelve dos, nuestra regla escoge <strong>la más cercana</strong> (la más grande). Y como el gesto debe sostenerse 1,5 segundos sin cambiar, una lectura revuelta de un instante no dispara ninguna acción. Recomendación en pantalla: una sola mano frente a la cámara.</p>
 </section>
 
-<section class="panel ml5__seccion" id="entrenamiento">
-  <p class="eyebrow">Pregunta</p>
-  <h2>¿Cómo se entrenó?</h2>
-  <p>Hay dos modelos, y solo uno lo entrenamos nosotros:</p>
-  <div class="dos-columnas">
-    <div class="tarjeta">
-      <h3>handPose (preentrenado)</h3>
-      <p>Lo entrenó Google (MediaPipe Hands) con decenas de miles de fotos de manos reales con sus 21 puntos marcados a mano, más imágenes sintéticas de manos en 3D. Nosotros solo lo usamos: encuentra la mano y entrega los puntos.</p>
-    </div>
-    <div class="tarjeta">
-      <h3>Nuestra red de gestos</h3>
-      <p>La entrenamos en <a href="/entrenar">/entrenar</a> con <code>ml5.neuralNetwork</code>. Traduce los {{ entradas }} números de una mano a uno de {{ clases|length }} gestos.</p>
-    </div>
-  </div>
-  <p><strong>Pasos del entrenamiento:</strong></p>
-  <ol>
-    <li><strong>Grabar ejemplos:</strong> se elige un gesto y se sostiene 3 segundos frente a la cámara; cada lectura (unas 20 por segundo) es un ejemplo. Mínimo {{ minimo }} por gesto, moviendo la mano, acercándola y alejándola.</li>
-    <li><strong>Gestos que aprende:</strong> {% for clave, nombre in clases %}{{ nombre }}{{ ", " if not loop.last else "" }}{% endfor %}. «Mano relajada» existe para que la red pueda decir «esto no es un gesto».</li>
-    <li><strong>Preparar los números:</strong> cada punto se mide desde la muñeca y se divide por el tamaño de la mano. Así no importa dónde está la mano en la imagen ni qué tan cerca.</li>
-    <li><strong>Entrenar:</strong> con el 80 % de los ejemplos, 60 épocas, lotes de 32. La red es pequeña: {{ entradas }} entradas → {{ ocultas }} neuronas ocultas → {{ clases|length }} salidas, {{ parametros }} números ajustables.</li>
-    <li><strong>Evaluar:</strong> con el 20 % que la red nunca vio; la página muestra la precisión por gesto.</li>
-    <li><strong>Usar:</strong> /gestos solo hace caso a la red si está segura en un 80 % o más. Si no hay red guardada, usa reglas de distancias (un dedo está estirado si su punta queda lejos de la muñeca).</li>
-  </ol>
-  <p><strong>¿Con qué mano?</strong> Con cualquiera: la izquierda se refleja como derecha, así que basta entrenar con una. Aun así recomendamos grabar con las dos y con varias personas para que la red no se acostumbre a una sola mano.</p>
-  <p class="estado-modelo" id="estado-modelo">Consultando el modelo guardado…</p>
-</section>
-
 <section class="panel ml5__seccion" id="almacenamiento">
-  <p class="eyebrow">Pregunta</p>
+  <p class="eyebrow">Pregunta 6</p>
   <h2>¿Guardamos imágenes o videos? ¿No es muy pesado?</h2>
   <p><strong>No guardamos ni imágenes ni videos.</strong> Sería pesado, lento de entrenar y un riesgo de privacidad. Guardamos coordenadas:</p>
   <div class="tabla-scroll">
@@ -198,6 +394,8 @@
   </div>
   <p class="subtitle">Entrenar con imágenes exigiría una red convolucional, miles de fotos y una GPU potente. Con coordenadas, la red entrena en segundos en el navegador y aprende con pocos ejemplos, porque handPose ya hizo el trabajo difícil de encontrar la mano.</p>
 </section>
+
+<div class="ml5__parte" id="parte-6"><span>Parte 6</span><h2>Consideraciones</h2></div>
 
 <section class="panel ml5__seccion" id="limitaciones">
   <p class="eyebrow">Hay que saberlo</p>
@@ -270,6 +468,20 @@
     <li><strong>/entrenar</strong> tiene el botón «Borrar las muestras del servidor» para ejercer el derecho de supresión.</li>
   </ul>
   <p class="subtitle">Resumen académico, no asesoría legal. Para operar un kiosko real hay que verificarlo con las fuentes oficiales (SIC, texto de la ley) y publicar una política de tratamiento de datos.</p>
+</section>
+
+<div class="ml5__parte" id="parte-7"><span>Parte 7</span><h2>Cierre</h2></div>
+
+<section class="panel ml5__seccion" id="conclusiones">
+  <p class="eyebrow">Cierre</p>
+  <h2>Conclusiones</h2>
+  <ul>
+    <li>ml5.js permite usar <strong>inteligencia artificial en el navegador</strong> con pocas líneas de código y sin servidores especiales.</li>
+    <li>Combinamos un modelo <strong>preentrenado</strong> (handPose, encuentra la mano) con uno <strong>propio</strong> (neuralNetwork, entiende el gesto).</li>
+    <li>Trabajar con <strong>coordenadas en vez de imágenes</strong> hace todo más liviano ({{ pesos_kb }} KB el modelo), más rápido y más privado.</li>
+    <li>Corregimos problemas reales: manos en pantallas, dos manos, errores de cámara y ejemplos que quedaban públicos.</li>
+    <li>La cámara es <strong>opcional</strong>: el kiosko siempre se puede usar tocando, y se informa al usuario según la Ley 1581 de 2012.</li>
+  </ul>
 </section>
 
 </div>
