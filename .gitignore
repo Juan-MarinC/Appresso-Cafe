@@ -10,5 +10,6 @@ appresso_food/appresso_food.db
 
 # Datos personales: secretos y lo que graba /entrenar (puntos de la mano de quien entrena)
 .env
-appresso_food/static/modelos/gestos/
+# El modelo entrenado (static/modelos/gestos) sí se sube: son los pesos de la red, no fotos ni puntos de manos.
+appresso_food/static/modelos/gestos/muestras.json
 appresso_food/datos_privados/
