@@ -41,7 +41,7 @@
 
   {% block hero %}{% endblock %}
 
-  <main class="shell" id="contenido">
+  <main class="shell{% block shell_clase %}{% endblock %}" id="contenido">
     {% block contenido %}{% endblock %}
   </main>
 
