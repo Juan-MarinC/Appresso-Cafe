@@ -152,6 +152,12 @@ class HttpLogHelperTests(unittest.TestCase):
         self.assertEqual(http_log._origin("ab12.ngrok-free.app", True), "ngrok")
         self.assertEqual(http_log._origin("localhost:8000", False), "local")
 
+    def test_el_registro_oculta_la_clave_de_pago_y_los_tokens(self):
+        self.assertEqual(http_log._ocultar("pedido=3&valor=82000&clave=abc-123"), "pedido=3&valor=82000&clave=***")
+        self.assertEqual(http_log._ocultar("client=Ana&pedido_token=x1&token=y2"), "client=Ana&pedido_token=***&token=***")
+        self.assertEqual(http_log._ocultar('{"idTxn": "77", "clave": "a\\"b"}'), '{"idTxn": "77", "clave": "***"}')
+        self.assertEqual(http_log._ocultar("cliente_clave_x=1&mitoken=2"), "cliente_clave_x=1&mitoken=2")  # otros campos quedan igual
+
     def test_summary_explains_the_response(self):
         body = json.dumps({"estado": "REJECTED", "motivo": "HASH_MISMATCH", "mensaje": "no coincide"}).encode()
         self.assertEqual(http_log._summary(422, body, None), "REJECTED · HASH_MISMATCH · no coincide")

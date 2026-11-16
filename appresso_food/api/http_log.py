@@ -11,6 +11,7 @@ guardan aparte para que no tapen las peticiones reales, como las del profesor po
 
 import itertools
 import json
+import re
 import logging
 import threading
 import time
@@ -85,10 +86,21 @@ def _origin(host: str, forwarded: bool) -> str:
     return "proxy" if forwarded else "local"
 
 
+# /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos.
+_SECRETOS = r"clave|token|pedido_token"
+_SECRETO_FORM = re.compile(rf"\b({_SECRETOS})=[^&\s]*")
+_SECRETO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)"(?:[^"\\]|\\.)*"')
+
+
+def _ocultar(text: str) -> str:
+    text = _SECRETO_FORM.sub(r"\1=***", text)
+    return _SECRETO_JSON.sub(r'"\1"\2"***"', text)
+
+
 def _text(raw: bytes) -> Optional[str]:
     if not raw:
         return None
-    text = raw.decode("utf-8", errors="replace")
+    text = _ocultar(raw.decode("utf-8", errors="replace"))
     return text + " …(recortado)" if len(raw) >= MAX_BODY_CHARS else text
 
 
@@ -127,7 +139,7 @@ def _record(scope, request_id, started, status, request_body, response_body, err
         "ts": datetime.now().isoformat(timespec="milliseconds"),
         "metodo": method,
         "ruta": path,
-        "query": scope.get("query_string", b"").decode("latin-1"),
+        "query": _ocultar(scope.get("query_string", b"").decode("latin-1")),
         "status": status,
         "status_texto": STATUS_TEXT.get(status, ""),
         "ms": round((time.perf_counter() - started) * 1000, 1),
