@@ -2,7 +2,7 @@
 // GestosReglas) la traduce a acciones. Todo corre en el navegador. Como en un kiosko: primero comer aquí o para
 // llevar, luego se agregan combos a un carrito y el pedido completo se envía con su formulario (POST /pedidos).
 (function () {
-    const CONFIANZA = 0.8;  // por debajo, la red "duda" y no se toma ninguna acción
+    const CONFIANZA = 0.8;  // por debajo la red "duda" y deciden las reglas de distancias
     const MS_SOSTENER = (k) => (k === "ayuda" ? 3000 : 1500);  // la ayuda pide más tiempo para no activarse sin querer
     const MS_INACTIVO = 30000;  // kiosko: si nadie hace nada, la siguiente persona no hereda el pedido
     const { clasificar, clave, crearTemporizador, elegirMano, rasgos, desdeClave } = window.GestosReglas;
@@ -13,7 +13,12 @@
     const ultimoGesto = {};
     let elegido = null;   // formulario del combo elegido
     let paraLlevar = null;  // null mientras se muestra la bienvenida
-    const carrito = [];     // {form, n}: combo y cuántas veces
+    const carrito = [];     // {form, n}: combo y cuántas veces, o {extra, n: 1}: un producto suelto
+    const EXTRAS = JSON.parse($("oferta").dataset.extras);  // [{id, nombre, precio}] que se pueden ofrecer
+    let oferta = null;        // extra que se está ofreciendo (pulgar sí · puño no)
+    let yaOfrecido = false;   // una sola sugerencia por pedido, para no insistir
+    let voz = false;          // accesibilidad: leer cada aviso en voz alta
+    let origen = "";          // quién leyó el último gesto: la red (con su confianza) o las reglas
     let enviando = false;
     let modelo = null;
     let conexiones = [];  // pares de puntos que forman el esqueleto de la mano
@@ -23,11 +28,22 @@
     let primerCuadro = true;
     let ultimaActividad = 0;
 
+    const DEPURAR = location.search.includes("debug");  // /gestos?debug muestra quién leyó el gesto (red o reglas)
     const pesos = (n) => "$" + n.toLocaleString("es-CO", { maximumFractionDigits: 0 });
+
+    function decir(texto) {
+        if (!voz || !window.speechSynthesis) return;
+        speechSynthesis.cancel();  // lo nuevo reemplaza lo que se estaba leyendo
+        // La voz lee el texto; los emojis son solo apoyo visual.
+        const frase = new SpeechSynthesisUtterance(texto.replace(/·/g, ",").replace(/\p{Extended_Pictographic}|\uFE0F/gu, ""));
+        frase.lang = "es-CO";
+        speechSynthesis.speak(frase);
+    }
 
     function mostrar(titulo, detalle = "") {
         $("estado-titulo").textContent = titulo;
         $("estado-detalle").textContent = detalle;
+        decir(`${titulo}. ${detalle}`);
     }
 
     // Muestra en la tarjeta cuántos combos y su precio; los productos los suma el carrito desde data-base.
@@ -44,7 +60,7 @@
         combos.forEach((c) => c.classList.toggle("elegido", c === form));
         if (form) {
             fijarCantidad(form, 1);
-            mostrar(`Combo ${form.dataset.numero}: ${form.dataset.nombre}`, "¿Cuántos? Baja la mano y muestra de 1 a 4 dedos · 👍 agregar · ✊ cancelar");
+            mostrar(`Combo ${form.dataset.numero}: ${form.dataset.nombre}`, "¿Cuántos? Baja la mano y muestra de 1 a 4 dedos · 👍 Pulgar arriba agrega · ✊ Puño cancela");
             form.scrollIntoView({ block: "nearest", behavior: "smooth" });
         } else {
             mostrar("Combo cancelado", "Muestra de 1 a 4 dedos para elegir otro combo");
@@ -55,7 +71,7 @@
         ultimaActividad = performance.now();
         fijarCantidad(elegido, n);
         const total = Number(elegido.querySelector(".combo__precio").dataset.total) * n;
-        mostrar(`${n} × ${elegido.dataset.nombre} = ${pesos(total)}`, "👍 Pulgar arriba para agregarlo · ✊ puño para cancelar");
+        mostrar(`${n} × ${elegido.dataset.nombre} = ${pesos(total)}`, "👍 Pulgar arriba para agregarlo · ✊ Puño para cancelar");
     }
 
     function elegirModalidad(llevar) {
@@ -64,7 +80,7 @@
         $("bienvenida").hidden = true;
         $("menu-kiosko").hidden = false;
         $("carrito").hidden = false;
-        $("carrito-modalidad").textContent = llevar ? "🛍️ Para llevar" : "🍽️ Para comer aquí";
+        $("carrito-modalidad").textContent = llevar ? "Para llevar" : "Para comer aquí";
         mostrar(llevar ? "Para llevar" : "Para comer aquí", "Muestra de 1 a 4 dedos para elegir un combo, o tócalo");
     }
 
@@ -75,23 +91,29 @@
         mostrar("¿Comer aquí o para llevar?", "Toca una opción o muestra 1 dedo (aquí) o 2 dedos (para llevar)");
     }
 
-    // El formulario del carrito lleva cada producto una sola vez, con la suma de todos los combos.
+    const nombreDe = (item) => (item.extra ? item.extra.nombre : item.form.dataset.nombre);
+
+    // El formulario del carrito lleva cada producto una sola vez, con la suma de todos los combos y extras.
     function pintarCarrito() {
         const form = $("carrito-form");
         form.querySelectorAll(".carrito-item").forEach((i) => i.remove());
         const cantidades = new Map();
         let total = 0;
         $("carrito-lineas").innerHTML = "";
-        carrito.forEach(({ form: combo, n }, i) => {
-            const ids = combo.querySelectorAll('input[name="product_id"]');
-            combo.querySelectorAll('input[name="quantity"]').forEach((q, j) => {
-                cantidades.set(ids[j].value, (cantidades.get(ids[j].value) || 0) + Number(q.dataset.base) * n);
-            });
-            const subtotal = Number(combo.querySelector(".combo__precio").dataset.total) * n;
+        const sumar = (id, cantidad) => cantidades.set(String(id), (cantidades.get(String(id)) || 0) + cantidad);
+        carrito.forEach((item, i) => {
+            const { form: combo, extra, n } = item;
+            if (extra) {
+                sumar(extra.id, n);
+            } else {
+                const ids = combo.querySelectorAll('input[name="product_id"]');
+                combo.querySelectorAll('input[name="quantity"]').forEach((q, j) => sumar(ids[j].value, Number(q.dataset.base) * n));
+            }
+            const subtotal = (extra ? extra.precio : Number(combo.querySelector(".combo__precio").dataset.total)) * n;
             total += subtotal;
             const li = document.createElement("li");
             li.innerHTML = `<span>${n} × <strong></strong><br><small>${pesos(subtotal)}</small></span><button type="button" class="enlace">Quitar</button>`;
-            li.querySelector("strong").textContent = combo.dataset.nombre;
+            li.querySelector("strong").textContent = nombreDe(item);
             li.querySelector("button").addEventListener("click", () => quitar(i));
             $("carrito-lineas").append(li);
         });
@@ -106,35 +128,71 @@
         $("carrito-enviar").disabled = $("carrito-vaciar").disabled = !carrito.length;
     }
 
+    const SIGUE = "Elige otro combo · 👍 Pulgar arriba confirma el pedido · ✊ Puño quita el último";
+
     function agregar(form) {
         const n = Number(form.querySelector(".combo__cantidad").value);
         carrito.push({ form, n });
         elegir(null);
         pintarCarrito();
-        mostrar(`Agregado: ${n} × ${form.dataset.nombre}`, "Elige otro combo con los dedos · 👍 confirmar el pedido · ✊ quitar el último");
+        if (!ofrecer()) mostrar(`Agregado: ${n} × ${form.dataset.nombre}`, SIGUE);
+    }
+
+    // Como en un kiosko: tras el primer combo se sugiere un producto que el pedido todavía no tiene.
+    function ofrecer() {
+        if (yaOfrecido) return false;
+        const enPedido = new Set(carrito.flatMap((item) => (item.extra ? [String(item.extra.id)]
+            : [...item.form.querySelectorAll('input[name="product_id"]')].map((i) => i.value))));
+        oferta = EXTRAS.find((e) => !enPedido.has(String(e.id))) || null;
+        if (!oferta) return false;
+        yaOfrecido = true;
+        $("oferta").hidden = false;
+        $("oferta-texto").textContent = `¿Le agregas ${oferta.nombre} por ${pesos(oferta.precio)}?`;
+        mostrar($("oferta-texto").textContent, "👍 Pulgar arriba: sí · ✊ Puño: no");
+        return true;
+    }
+
+    function responderOferta(si) {
+        ultimaActividad = performance.now();
+        const extra = oferta;
+        cerrarOferta();
+        if (!extra) return;
+        if (si) {
+            carrito.push({ extra, n: 1 });
+            pintarCarrito();
+        }
+        mostrar(si ? `Agregado: ${extra.nombre}` : "Sin extras", SIGUE);
+    }
+
+    function cerrarOferta() {
+        oferta = null;
+        $("oferta").hidden = true;
     }
 
     function quitar(i) {
         ultimaActividad = performance.now();
-        const [{ form }] = carrito.splice(i, 1);
+        const [item] = carrito.splice(i, 1);
         pintarCarrito();
-        mostrar(`Quitado: ${form.dataset.nombre}`, carrito.length ? "👍 confirmar el pedido · ✊ quitar otro" : "Muestra de 1 a 4 dedos para elegir un combo");
+        mostrar(`Quitado: ${nombreDe(item)}`, carrito.length ? "👍 Pulgar arriba confirma el pedido · ✊ Puño quita otro" : "Muestra de 1 a 4 dedos para elegir un combo");
     }
 
-    function enviarCarrito() {
-        const form = $("carrito-form");
-        form.elements.client.value = $("nombre").value.trim() || "Cliente con gestos";
-        form.elements.para_llevar.value = paraLlevar ? "1" : "0";
-        enviando = true;
-        mostrar("Enviando tu pedido…", $("carrito-total").textContent);
-        form.requestSubmit();
+    // Con gestos o tocando el botón el pedido sale por el mismo camino: el evento submit del formulario.
+    const enviarCarrito = () => $("carrito-form").requestSubmit();
+
+    function vaciar() {
+        carrito.length = 0;
+        cerrarOferta();
+        yaOfrecido = false;
+        pintarCarrito();
     }
 
     function reiniciar() {
         elegir(null);
-        carrito.length = 0;
-        pintarCarrito();
+        vaciar();
         $("nombre").value = "";
+        $("carrito-form").reset();  // notas para cocina
+        // La siguiente persona no hereda el texto grande, el contraste ni la voz de la anterior.
+        document.querySelectorAll('.accesibilidad [aria-pressed="true"]').forEach((b) => b.click());
         bienvenida();
         mostrar("Listo para un nuevo pedido", "Se reinició por inactividad. ¿Comer aquí (1 dedo) o para llevar (2 dedos)?");
     }
@@ -144,7 +202,7 @@
         try {
             const respuesta = await fetch("/api/ayuda", { method: "POST" });
             if (!respuesta.ok) throw new Error(respuesta.status);
-            mostrar("🖐️ Ya avisamos a un empleado", "Viene a ayudarte en un momento");
+            mostrar("Ya avisamos a un empleado", "Viene a ayudarte en un momento");
         } catch (error) {
             mostrar("No pudimos avisar", "Levanta la mano o acércate al mostrador");
         }
@@ -153,6 +211,9 @@
     function actuar(gesto) {
         if (gesto.tipo === "ayuda") {
             pedirAyuda();
+        } else if (oferta) {
+            if (gesto.tipo === "confirmar" || gesto.tipo === "cancelar") responderOferta(gesto.tipo === "confirmar");
+            else mostrar($("oferta-texto").textContent, "👍 Pulgar arriba: sí · ✊ Puño: no");
         } else if (paraLlevar === null) {
             if (gesto.tipo === "combo" && gesto.numero <= 2) elegirModalidad(gesto.numero === 2);
             else mostrar("¿Comer aquí o para llevar?", "1 dedo: comer aquí · 2 dedos: para llevar");
@@ -178,16 +239,19 @@
     const texto = (g) => g.tipo === "combo" ? `Veo ${g.numero} ${g.numero === 1 ? "dedo" : "dedos"}`
         : { confirmar: "Veo pulgar arriba", cancelar: "Veo puño cerrado", ayuda: "Veo la palma abierta" }[g.tipo];
 
-    // Con red: se le pide una predicción por vez y se usa la última que llegó. Sin red: las reglas de distancias.
+    // Con red: se le pide una predicción por vez y se usa la última que llegó. Si la red duda (menos de CONFIANZA),
+    // todavía no responde o no hay red, deciden las reglas de distancias: así una mano distinta a la del
+    // entrenamiento también puede pedir.
     function leerGesto(mano) {
-        if (!red) return clasificar(mano);
-        if (!prediciendo) {
+        if (red && !prediciendo) {
             prediciendo = true;
             red.classify(rasgos(mano))
                 .then((r) => { prediccion = CamaraMano.mejor(r); })
                 .finally(() => { prediciendo = false; });
         }
-        return prediccion && prediccion.confidence >= CONFIANZA ? desdeClave(prediccion.label) : null;
+        const segura = red && prediccion && prediccion.confidence >= CONFIANZA;
+        origen = segura ? `red ${Math.round(prediccion.confidence * 100)} %` : red ? "reglas" : "";
+        return segura ? desdeClave(prediccion.label) : clasificar(mano);
     }
 
     function alDetectar(manos) {
@@ -210,7 +274,7 @@
         }
         const r = temporizador(k, ahora);
         $("progreso-barra").style.width = `${Math.round(r.progreso * 100)}%`;
-        const seguridad = red && gesto ? ` · red ${Math.round(prediccion.confidence * 100)} %` : "";
+        const seguridad = gesto && origen && DEPURAR ? ` · ${origen}` : "";
         const otra = revisadas.length > 1 ? " · uso la mano más cercana" : "";
         $("lectura").textContent = lejos ? "Acércate un poco a la cámara"
             : gesto ? texto(gesto) + seguridad + otra : mano ? "No reconozco ese gesto" : "No veo tu mano";
@@ -249,13 +313,13 @@
         });
     });
     $("carrito-form").addEventListener("submit", (e) => {
-        if (enviando) return;  // ya lo preparó enviarCarrito()
-        e.preventDefault();
-        enviarCarrito();
+        e.target.elements.client.value = $("nombre").value.trim() || "Cliente con gestos";
+        e.target.elements.para_llevar.value = paraLlevar ? "1" : "0";
+        enviando = true;  // deja de leer gestos mientras carga la confirmación
+        mostrar("Enviando tu pedido…", $("carrito-total").textContent);
     });
     $("carrito-vaciar").addEventListener("click", () => {
-        carrito.length = 0;
-        pintarCarrito();
+        vaciar();
         mostrar("Pedido vacío", "Muestra de 1 a 4 dedos para elegir un combo");
     });
     document.querySelectorAll(".bienvenida__opcion").forEach((b) => b.addEventListener("click", () => elegirModalidad(b.dataset.llevar === "1")));
@@ -269,6 +333,21 @@
     }));
     $("activar").addEventListener("click", activar);
     $("ayuda").addEventListener("click", pedirAyuda);
+    $("oferta-si").addEventListener("click", () => responderOferta(true));
+    $("oferta-no").addEventListener("click", () => responderOferta(false));
+    // Accesibilidad: cada botón es un interruptor (aria-pressed); texto grande y contraste son clases en <html>.
+    $("acc-voz").hidden = !window.speechSynthesis;
+    for (const [id, clase] of [["acc-grande", "texto-grande"], ["acc-contraste", "alto-contraste"], ["acc-voz", null]]) {
+        $(id).addEventListener("click", (e) => {
+            const activo = e.currentTarget.getAttribute("aria-pressed") !== "true";
+            e.currentTarget.setAttribute("aria-pressed", String(activo));
+            if (clase) return document.documentElement.classList.toggle(clase, activo);
+            voz = activo;
+            if (activo) decir(`${$("estado-titulo").textContent}. ${$("estado-detalle").textContent}`);
+            else speechSynthesis.cancel();
+        });
+    }
+    combos.forEach((c) => { c.querySelector(".primary-btn").textContent = "Agregar"; });  // con carrito, el botón agrega
     pintarCarrito();
     bienvenida();
 })();

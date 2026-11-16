@@ -2,6 +2,7 @@
 Cola -> pedidos pendientes (FIFO), Pila -> deshacer última modificación (LIFO).
 """
 
+from bisect import insort
 from collections import deque
 from dataclasses import dataclass
 from typing import Any, Deque, List, Optional
@@ -22,6 +23,10 @@ class PendingOrdersQueue:
 
     def enqueue(self, order_id: int) -> None:
         self._queue.append(order_id)
+
+    def restore(self, order_id: int) -> None:
+        """Devuelve un pedido a su puesto original (al deshacer): los números de pedido van en orden de llegada."""
+        insort(self._queue, order_id)
 
     def dequeue(self) -> Optional[int]:
         return self._queue.popleft() if self._queue else None

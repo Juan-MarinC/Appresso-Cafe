@@ -5,7 +5,7 @@
 {% block titulo %}Pedir con gestos - Appresso Food{% endblock %}
 
 {% block estilos %}
-  <link rel="stylesheet" href="/static/css/gestos.css?v=2">
+  <link rel="stylesheet" href="/static/css/gestos.css?v=5">
 {% endblock %}
 
 {% block shell_clase %} shell--kiosko{% endblock %}
@@ -15,7 +15,6 @@
   <div class="pagina-cabeza__fila">
     <h1>Pedir con gestos</h1>
     <p>Elige tu combo con la mano, sin hablar.</p>
-    {% include "_gestos_nav.html" %}
   </div>
 </section>
 {% endblock %}
@@ -28,7 +27,7 @@
             <video id="video" playsinline muted></video>
             <canvas id="lienzo" aria-hidden="true"></canvas>
             <div class="visor__inicio" id="visor-inicio">
-                <p>La imagen se procesa solo en este equipo: no se graba ni se envía. Solo se leen los puntos de tu mano, nunca tu cara. Es opcional: también puedes pedir tocando. <a href="/gestos/ml5#privacidad">¿Qué hacemos con la cámara?</a></p>
+                <p>Solo se leen los puntos de tu mano. Nada se graba ni se envía. <a href="/gestos/ml5#privacidad">Más información</a></p>
                 <button type="button" class="primary-btn" id="activar">Activar cámara</button>
             </div>
         </div>
@@ -39,23 +38,31 @@
         <div class="progreso" aria-hidden="true"><div id="progreso-barra"></div></div>
         <p class="lectura" id="lectura" aria-hidden="true"></p>
 
-        <h2 id="guia-titulo" class="guia-titulo">Gestos <small>sostén cada uno hasta llenar la barra</small></h2>
-        <ol class="guia guia--compacta" aria-labelledby="guia-titulo">
-            <li><span class="guia__icono" aria-hidden="true">🍽️</span><span><strong>1 dedo</strong> comer aquí · <strong>2</strong> para llevar</span></li>
-            <li><span class="guia__icono" aria-hidden="true">☝️</span><span><strong>1 a 4 dedos</strong> elige ese combo</span></li>
-            <li><span class="guia__icono" aria-hidden="true">✌️</span><span><strong>Baja y muestra dedos</strong> = cuántos</span></li>
-            <li><span class="guia__icono" aria-hidden="true">👍</span><span><strong>Pulgar arriba</strong> agrega; otra vez, confirma</span></li>
-            <li><span class="guia__icono" aria-hidden="true">✊</span><span><strong>Puño</strong> cancela o quita el último</span></li>
-            <li><span class="guia__icono" aria-hidden="true">🖐️</span><span><strong>Palma abierta 3 s</strong> (pulgar separado) pide ayuda</span></li>
-        </ol>
+        <details class="plegable">
+            <summary>¿Cómo pido con gestos?</summary>
+            <p class="guia__nota">Sostén cada gesto hasta llenar la barra.</p>
+            <ul class="guia">
+                <li><span aria-hidden="true">☝️</span> <strong>1 a 4 dedos</strong> elige ese combo; otra vez, cuántos</li>
+                <li><span aria-hidden="true">👍</span> <strong>Pulgar arriba</strong> agrega; otra vez, confirma</li>
+                <li><span aria-hidden="true">✊</span> <strong>Puño</strong> cancela o quita el último</li>
+                <li><span aria-hidden="true">🖐️</span> <strong>Palma abierta 3 s</strong> pide ayuda</li>
+            </ul>
+        </details>
         <button type="button" class="button secondary gestos__ayuda" id="ayuda">🖐️ Pedir ayuda a un empleado</button>
+        <details class="plegable">
+            <summary>Accesibilidad</summary>
+            <div class="accesibilidad" role="group" aria-label="Opciones de accesibilidad">
+                <button type="button" class="button secondary" id="acc-grande" aria-pressed="false">Texto grande</button>
+                <button type="button" class="button secondary" id="acc-contraste" aria-pressed="false">Alto contraste</button>
+                <button type="button" class="button secondary" id="acc-voz" aria-pressed="false">Leer en voz alta</button>
+            </div>
+        </details>
     </section>
 
     <div class="kiosko__pedido">
         <!-- La bienvenida y el carrito los activa gestos.js; sin JavaScript cada combo se pide solo con su botón. -->
         <section class="panel bienvenida" id="bienvenida" aria-labelledby="bienvenida-titulo" hidden>
             <h2 id="bienvenida-titulo">¿Dónde vas a comer?</h2>
-            <p class="subtitle">Toca una opción o, con la cámara activa, muestra 1 dedo (aquí) o 2 dedos (para llevar).</p>
             <div class="bienvenida__opciones">
                 <button type="button" class="bienvenida__opcion" data-llevar="0"><span aria-hidden="true">🍽️</span>Comer aquí<small>1 dedo</small></button>
                 <button type="button" class="bienvenida__opcion" data-llevar="1"><span aria-hidden="true">🛍️</span>Para llevar<small>2 dedos</small></button>
@@ -85,9 +92,7 @@
                             <p class="combo__precio" data-total="{{ combo.total }}">{{ combo.total|pesos }}</p>
                         </div>
                         <div class="combo__acciones">
-                            <label class="combo__fila">Cantidad
-                                <select class="combo__cantidad" aria-label="Cantidad del {{ combo.nombre }}">{% for n in range(1, 5) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select>
-                            </label>
+                            <select class="combo__cantidad" aria-label="Cantidad del {{ combo.nombre }}">{% for n in range(1, 5) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select>
                             <button type="submit" class="primary-btn">Pedir combo {{ combo.numero }}</button>
                         </div>
                     </form>
@@ -102,6 +107,13 @@
                 <p class="carrito__modalidad"><span id="carrito-modalidad"></span> <button type="button" class="enlace" id="cambiar-modalidad">Cambiar</button></p>
                 <ul class="carrito__lineas" id="carrito-lineas" aria-live="polite"></ul>
                 <p class="carrito__total">Total <strong id="carrito-total">$0</strong></p>
+                <div class="oferta" id="oferta" data-extras='{{ extras|tojson }}' hidden>
+                    <p id="oferta-texto"></p>
+                    <div class="oferta__botones">
+                        <button type="button" class="primary-btn" id="oferta-si">👍 Sí, agregar</button>
+                        <button type="button" class="button secondary" id="oferta-no">✊ No, gracias</button>
+                    </div>
+                </div>
                 <div class="field-group">
                     <label for="nombre">Tu nombre (opcional)</label>
                     <input type="text" id="nombre" placeholder="Ej: Belén Castilla" autocomplete="given-name" />
@@ -111,17 +123,25 @@
                     <input type="hidden" name="channel" value="local" />
                     <input type="hidden" name="para_llevar" value="0" />
                     <input type="hidden" name="pedido_token" value="{{ pedido_token }}" />
+                    <details class="plegable">
+                        <summary>Personalizar (opcional)</summary>
+                        <fieldset class="notas">
+                            <legend class="solo-lectores">Para cocina</legend>
+                            {% for nota in notas_cocina %}<label><input type="checkbox" name="nota" value="{{ nota }}"> {{ nota }}</label>{% endfor %}
+                        </fieldset>
+                    </details>
                     <button type="submit" class="primary-btn" id="carrito-enviar" disabled>Confirmar pedido</button>
                 </form>
-                <button type="button" class="button secondary" id="carrito-vaciar" disabled>Vaciar</button>
+                <button type="button" class="enlace" id="carrito-vaciar" disabled>Vaciar pedido</button>
             </section>
         </div>
     </div>
 </div>
+<p class="kiosko__equipo">Para el equipo: <a href="/entrenar">Entrenar la red</a> · <a href="/gestos/ml5">ml5.js</a></p>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/gestos-reglas.js"></script>
 <script src="/static/js/camara-mano.js"></script>
-<script src="/static/js/gestos.js"></script>
+<script src="/static/js/gestos.js?v=5"></script>
 {% endblock %}

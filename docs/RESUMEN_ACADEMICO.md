@@ -67,8 +67,10 @@ el descuento de inventario.
 `recursive_total_units` (trabajo O(n), profundidad O(log n) por divide y
 vencerás) se instrumentan con `OperationCounter` para contar comparaciones,
 sumas y llamadas. El laboratorio de complejidad (`/laboratorio`) permite
-ejecutar estos algoritmos con 10, 100, 1.000, 10.000 o más pedidos
-sintéticos y observar cómo escala el número de operaciones.
+ejecutar estos algoritmos con 10, 100, 1.000, 10.000 y 25.000 pedidos
+sintéticos y comparar en una sola tabla cómo escala el número de operaciones:
+la búsqueda (peor caso) hace n comparaciones, la recursión 2n − 1 llamadas
+(O(n)) y solo su profundidad crece como log n.
 
 ### 4.6 Progresiones aritméticas
 `growth.py` aplica `a_n = a_1 + (n-1)d` para proyectar, a partir del

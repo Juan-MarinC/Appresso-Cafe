@@ -5,11 +5,10 @@ import secrets
 import time
 from collections import OrderedDict
 from datetime import date, datetime
-from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Body, Form, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 from appresso_food.antifraude import fraud_routes
 from appresso_food.antifraude.fraud_service import STATUS_VALID
@@ -38,6 +37,11 @@ FOTOS_MENU = {
 }
 
 # Combos que se piden con gestos (1 a 4 dedos). Se muestran solo los que tienen todos sus productos en el menú.
+# Kiosko: lo único que se le puede pedir a cocina (lista cerrada: no entra texto libre) y qué se ofrece de más.
+# shortcut: las notas valen para todo el pedido y no descuentan menos inventario; pasar a notas por producto si hace falta.
+NOTAS_COCINA = ["Sin lechuga", "Sin tomate", "Sin queso", "Sin salsa"]
+EXTRAS_KIOSKO = ["Malteada", "Papas con Queso", "Gaseosa"]
+
 COMBOS_GESTOS = [
     ("Combo clásico", [("Hamburguesa Clásica", 1), ("Papas Fritas", 1), ("Gaseosa", 1)]),
     ("Combo doble", [("Hamburguesa Doble", 1), ("Papas con Queso", 1), ("Malteada", 1)]),
@@ -86,6 +90,10 @@ async def gesture_order(request: Request):
     """Pedido de combos con gestos de la mano (ml5.js en el navegador); envía el mismo formulario a /pedidos."""
     context = _common_context(request)
     context["combos"] = _combos(context["products"])
+    context["notas_cocina"] = NOTAS_COCINA
+    por_nombre = {p.name: p for p in context["products"]}
+    context["extras"] = [{"id": p.id, "nombre": p.name, "precio": p.price}
+                         for p in map(por_nombre.get, EXTRAS_KIOSKO) if p]
     return templates.TemplateResponse("gestos.html", context)
 
 
@@ -144,11 +152,14 @@ async def turns():
 
 
 @router.post("/api/pedidos/{order_id}/pago")
-def pay_order(order_id: int, idTxn: str = Body(..., embed=True, min_length=1, max_length=64)):
-    """Une el pedido con su transacción de la pasarela: solo si quedó VALID y por el total exacto del pedido."""
+def pay_order(order_id: int, idTxn: str = Body(..., min_length=1, max_length=64), clave: str = Body("", max_length=64)):
+    """Une el pedido con su transacción de la pasarela: solo con la clave de la confirmación, y si la transacción
+    quedó VALID por el total exacto del pedido."""
     order = storage.get_order(order_id)
     if order is None:
         raise HTTPException(404, f"No existe el pedido #{order_id}.")
+    if not order.pay_key or not secrets.compare_digest(clave.encode(), order.pay_key.encode()):
+        raise HTTPException(403, "Este pedido solo se puede pagar desde su página de confirmación.")
     if order.paid_txn == idTxn:
         return {"ok": True, "pedido": order_id, "idTxn": idTxn}  # reintento del mismo pago
     txn = fraud_routes.get_service().repo.get_transaction(idTxn)
@@ -274,6 +285,7 @@ async def create_order(
             items=items,
             served_by=served_by or None,
             para_llevar=form.get("para_llevar") == "1",
+            notas=", ".join(n for n in NOTAS_COCINA if n in form.getlist("nota")) or None,
         )
     except (CoverageError, StockError) as exc:
         return rechazar(str(exc))
@@ -313,24 +325,36 @@ async def kitchen(request: Request):
             "pending_orders": [o for o in pending_orders if o],
             "dispatch_list": dispatch_list,
             "undo_preview": undo_preview,
+            "token": gestos_api.token_para(request) or "",
         },
     )
 
 
+def _exigir_equipo(request: Request, token: str) -> None:
+    """Cocina cambia pedidos: solo con el token que la página entrega a quien la abre en el equipo del local
+    (o con APPRESSO_ENTRENAMIENTO=1). Así tampoco sirve un formulario armado desde otro sitio."""
+    esperado = gestos_api.token_para(request)
+    if not esperado or not secrets.compare_digest(token.encode(), esperado.encode()):
+        raise HTTPException(403, "Cocina solo se opera desde el equipo del local.")
+
+
 @router.post("/cocina/atender")
-async def kitchen_advance(request: Request):
+async def kitchen_advance(request: Request, token: str = Form("")):
+    _exigir_equipo(request, token)
     runtime.advance_pending()
     return RedirectResponse("/cocina", status_code=303)
 
 
 @router.post("/cocina/despachar")
-async def kitchen_dispatch(request: Request):
+async def kitchen_dispatch(request: Request, token: str = Form("")):
+    _exigir_equipo(request, token)
     runtime.dispatch_next_delivery()
     return RedirectResponse("/cocina", status_code=303)
 
 
 @router.post("/cocina/deshacer")
-async def kitchen_undo(request: Request):
+async def kitchen_undo(request: Request, token: str = Form("")):
+    _exigir_equipo(request, token)
     runtime.undo_last()
     return RedirectResponse("/cocina", status_code=303)
 
@@ -360,10 +384,11 @@ async def dashboard(request: Request):
 async def client_history(request: Request, client: str):
     history = storage.get_client_history(client)
     weekly_quantities = [order.total_quantity for order in history]
-    difference = infer_weekly_increase(weekly_quantities) if len(weekly_quantities) >= 2 else 2
-    progression = arithmetic_progression(weekly_quantities[0], difference, terms=5) if weekly_quantities else []
+    difference = infer_weekly_increase(weekly_quantities)  # 0 con menos de dos pedidos: todavía no hay tendencia
+    progression = arithmetic_progression(weekly_quantities[0], difference, terms=5) if len(weekly_quantities) >= 2 else []
+    # Con diferencia 0 o negativa el cliente no va subiendo: no hay número de pedidos que mostrar (None).
     growth_weeks = {
-        target: weeks_to_reach(target, start=weekly_quantities[-1] if weekly_quantities else 0, difference=difference or 1)
+        target: weeks_to_reach(target, start=weekly_quantities[-1], difference=difference) if weekly_quantities and difference > 0 else None
         for target in [42, 72, 120]
     }
 
@@ -385,50 +410,39 @@ async def lab_home(request: Request):
     return templates.TemplateResponse("laboratorio.html", {"request": request, "result": None})
 
 
+# --- Laboratorio de complejidad: los mismos algoritmos con n cada vez mayor, para ver cómo crecen las operaciones ---
+LAB_SIZES = [10, 100, 1000, 10000, 25000]
+
+
+def _medir_laboratorio(size: int) -> List[dict]:
+    """Una fila por tamaño hasta `size`. Solo acepta los tamaños de la lista: la entrada no puede pedir un n enorme."""
+    if size not in LAB_SIZES:
+        raise HTTPException(400, f"El tamaño debe ser uno de {LAB_SIZES}.")
+    orders = generate_demo_orders(size, storage.get_products(), storage.get_neighborhood_names())
+    filas = []
+    for n in (s for s in LAB_SIZES if s <= size):
+        muestra = orders[:n]
+        busca, suma, recursivo = OperationCounter(), OperationCounter(), OperationCounter()
+        inicio = time.perf_counter()
+        find_order_linear(muestra, muestra[-1].order_id, busca)  # peor caso: el pedido buscado es el último
+        total_units_sold(muestra, suma)
+        recursive_total_units(muestra, recursivo)
+        filas.append({
+            "n": n, "comparaciones": busca.comparisons, "sumas": suma.additions, "llamadas": recursivo.calls,
+            "profundidad": recursivo.max_depth, "ms": (time.perf_counter() - inicio) * 1000,
+        })
+    return filas
+
+
 @router.post("/laboratorio")
 async def lab_run(request: Request, size: int = Form(100)):
-    products = storage.get_products()
-    neighborhoods = storage.get_neighborhood_names()
-    demo_orders = generate_demo_orders(size, products, neighborhoods)
-
-    start_time = time.perf_counter()
-    counter = OperationCounter()
-    target_id = demo_orders[len(demo_orders) // 2].order_id if demo_orders else 0
-    find_order_linear(demo_orders, target_id, counter)
-    find_ops = counter.comparisons
-
-    counter.reset()
-    total_units_sold(demo_orders, counter)
-    total_ops = counter.additions
-
-    counter.reset()
-    recursive_total_units(demo_orders, counter)
-    rec_calls = counter.calls
-    rec_adds = counter.additions
-    elapsed_ms = (time.perf_counter() - start_time) * 1000
-
-    result = {
-        "size": size,
-        "find_ops": find_ops,
-        "total_ops": total_ops,
-        "rec_calls": rec_calls,
-        "rec_adds": rec_adds,
-        "elapsed_ms": elapsed_ms,
-    }
-
-    out_path = Path("operation_counts.csv")
-    out_path.write_text(
-        "size,find_comparisons,total_additions,recursive_calls,recursive_additions\n"
-        f"{size},{find_ops},{total_ops},{rec_calls},{rec_adds}\n",
-        encoding="utf-8",
-    )
-
-    return templates.TemplateResponse("laboratorio.html", {"request": request, "result": result})
+    return templates.TemplateResponse("laboratorio.html", {"request": request, "result": {"size": size, "filas": _medir_laboratorio(size)}})
 
 
-@router.get("/download/{filename}")
-async def download_file(filename: str):
-    file_path = Path(filename)
-    if not file_path.is_file():
-        return JSONResponse(content={"error": "File not found"}, status_code=404)
-    return FileResponse(path=file_path, filename=filename, media_type="text/csv")
+@router.get("/laboratorio/operation_counts.csv")
+async def lab_csv(size: int = 100):
+    """El CSV se arma al pedirlo (los pedidos de prueba son siempre los mismos): no se escribe ni se sirve ningún archivo del disco."""
+    lineas = ["n,comparaciones_busqueda,sumas,llamadas_recursivas,profundidad_recursion"]
+    lineas += [f"{f['n']},{f['comparaciones']},{f['sumas']},{f['llamadas']},{f['profundidad']}" for f in _medir_laboratorio(size)]
+    return Response("\n".join(lineas) + "\n", media_type="text/csv",
+                    headers={"Content-Disposition": 'attachment; filename="operation_counts.csv"'})

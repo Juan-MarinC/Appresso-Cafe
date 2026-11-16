@@ -32,9 +32,9 @@
         <h2>Fidelización (progresión aritmética)</h2>
         <p class="subtitle">Incremento estimado por pedido: <strong>{{ difference }}</strong> unidades &middot; Progresión: {{ progression | join(' -> ') }}</p>
         <ul class="growth-list">
-            <li><span>42 unidades</span><strong>{{ growth_weeks.get(42, 'N/A') }} pedidos</strong></li>
-            <li><span>72 unidades</span><strong>{{ growth_weeks.get(72, 'N/A') }} pedidos</strong></li>
-            <li><span>120 unidades</span><strong>{{ growth_weeks.get(120, 'N/A') }} pedidos</strong></li>
+            <li><span>42 unidades</span><strong>{{ growth_weeks[42] ~ ' pedidos' if growth_weeks[42] is not none else 'No la alcanza con la tendencia actual' }}</strong></li>
+            <li><span>72 unidades</span><strong>{{ growth_weeks[72] ~ ' pedidos' if growth_weeks[72] is not none else 'No la alcanza con la tendencia actual' }}</strong></li>
+            <li><span>120 unidades</span><strong>{{ growth_weeks[120] ~ ' pedidos' if growth_weeks[120] is not none else 'No la alcanza con la tendencia actual' }}</strong></li>
         </ul>
     </div>
     {% endif %}

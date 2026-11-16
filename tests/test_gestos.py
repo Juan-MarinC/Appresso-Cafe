@@ -207,7 +207,7 @@ class ModeloGestosTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def _archivos(self, **cambios):
-        meta = {"outputs": {"0": {"uniqueValues": ["combo1", "nada"]}}, "_muestras": 240, "_precision": 97.5}  # como lo guarda ml5
+        meta = {"outputs": {"0": {"uniqueValues": ["combo1", "nada"]}}, "_muestras": 240, "_precision": 97.5, "_entrenado": "2026-01-02T03:04:05"}  # como lo guarda ml5
         archivos = {
             "model.json": json.dumps({"modelTopology": {}, "weightsManifest": [{"paths": ["./model.weights.bin"], "weights": []}]}),
             "model.weights.bin": b"pesos",
@@ -257,6 +257,7 @@ class ModeloGestosTest(unittest.TestCase):
         self.assertTrue(estado["existe"])
         self.assertEqual(estado["clases"], ["combo1", "nada"])
         self.assertEqual(estado["precision"], 97.5)
+        self.assertEqual(estado["guardado"], "2026-01-02T03:04:05")  # la fecha del entrenamiento, no la del archivo
 
     def test_rechaza_archivos_faltantes_o_invalidos(self):
         os.environ["APPRESSO_ENTRENAMIENTO"] = "1"

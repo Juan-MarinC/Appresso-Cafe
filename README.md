@@ -154,7 +154,7 @@ navegador con ml5.js (`ml5.handPose`): no se graba ni se envía ninguna imagen.
 
 | Ruta | Qué hace |
 |---|---|
-| `/gestos` | Kiosko: comer aquí o para llevar (1 o 2 dedos), elegir combo y cantidad con los dedos, 👍 agrega al carrito y confirma, ✊ cancela o quita el último, palma abierta pide ayuda. También funciona tocando. |
+| `/gestos` | Kiosko: comer aquí o para llevar (1 o 2 dedos), elegir combo y cantidad con los dedos, 👍 agrega al carrito y confirma, ✊ cancela o quita el último, palma abierta pide ayuda. Tras el primer combo sugiere un extra (👍 sí · ✊ no) y permite notas para cocina (sin queso, sin salsa…). Tiene texto grande, alto contraste y lectura en voz alta. Si la red entrenada duda, deciden las reglas de distancias. También funciona tocando. |
 | `/entrenar` | Graba ejemplos de cada gesto, entrena una red con `ml5.neuralNetwork`, muestra la precisión y guarda el modelo (solo desde el mismo equipo del servidor). Si no hay modelo, `/gestos` usa reglas de distancias. Pide autorización antes de encender la cámara y permite borrar las muestras del servidor. |
 | `/gestos/ml5` | Submódulo para la exposición: laboratorio en vivo (hasta 2 manos, x/y/z, cuál usa el kiosko, los 42 números) y respuestas sobre errores de cámara, manos en fotos o pantallas, dos manos, superposición, entrenamiento, almacenamiento, limitaciones, costo, privacidad y Ley 1581 de 2012. |
 
@@ -163,11 +163,12 @@ Qué mano se usa: handPose busca hasta 2 manos; se descartan las de confianza me
 Las muestras de `/entrenar` (puntos de la mano) se guardan en `appresso_food/datos_privados/`, fuera de `/static`, y
 solo se leen (`GET /api/gestos/muestras`) o borran (`DELETE`) desde el mismo equipo del servidor.
 | `/turnos` | Pantalla de turnos: pedidos del local en preparación y listos. |
-| `/cocina` | Además de la cola: avisos de ayuda del kiosko, pedidos para llevar y si están pagados. |
+| `/cocina` | Además de la cola: avisos de ayuda del kiosko, pedidos para llevar y si están pagados. Atender, despachar y deshacer solo funcionan abriéndola en el equipo del servidor (`localhost`); por ngrok queda en solo lectura, salvo que se arranque con `APPRESSO_ENTRENAMIENTO=1`. |
 
 Después de confirmar, el botón **Pagar** abre `/transacciones` con el total del pedido; un pago `VALID` por el valor
-exacto lo marca como pagado. Límite conocido: como la pasarela no guarda el número de pedido, una transacción ajena
-del mismo valor también serviría (los pagos son simulados).
+exacto lo marca como pagado. Solo se puede pagar desde la confirmación: el enlace lleva una clave
+propia del pedido y sin ella el servidor responde 403. Límite conocido: como la pasarela no guarda el número de pedido,
+quien tenga esa clave podría usar una transacción ajena del mismo valor (los pagos son simulados).
 
 ### Aplicación de comidas rápidas (base del proyecto)
 
@@ -202,9 +203,10 @@ Detalle en la sección siguiente.
 9. **Pronóstico de ventas**: regresión lineal sobre las unidades vendidas
    por día, separado por canal (local/domicilio).
 10. **Laboratorio de complejidad computacional**: genera pedidos sintéticos
-    (no se guardan en la base de datos) para medir cómo escalan los
-    algoritmos de búsqueda, suma y recursividad (Big O), tal como se pedía
-    en el proyecto original.
+    (no se guardan en la base de datos) y muestra en una tabla, para cada n
+    (10, 100, 1.000, 10.000, 25.000), las operaciones contadas: búsqueda
+    lineal en el peor caso (n comparaciones), suma (O(n)) y recursividad
+    (2n − 1 llamadas, O(n); profundidad O(log n)).
 
 ## Relaciones del modelo de datos
 

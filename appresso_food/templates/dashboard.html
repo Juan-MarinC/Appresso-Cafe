@@ -28,14 +28,14 @@
             <small>{{ domicilio.revenue|pesos }} en ventas</small>
         </div>
         <div class="card">
-            <div class="label">Pronóstico local (7 días)</div>
+            <div class="label">Pronóstico local (en 7 días)</div>
             <div class="value">{{ "%.0f"|format(forecast_local) if forecast_local is not none else 'N/A' }}</div>
-            <small>unidades, por regresión lineal</small>
+            <small>unidades ese día, por regresión lineal</small>
         </div>
         <div class="card">
-            <div class="label">Pronóstico domicilio (7 días)</div>
+            <div class="label">Pronóstico domicilio (en 7 días)</div>
             <div class="value">{{ "%.0f"|format(forecast_domicilio) if forecast_domicilio is not none else 'N/A' }}</div>
-            <small>unidades, por regresión lineal</small>
+            <small>unidades ese día, por regresión lineal</small>
         </div>
     </div>
 
@@ -54,7 +54,7 @@
 
         <div class="panel">
             <h2>Producto favorito por barrio</h2>
-            <p class="subtitle">Relación barrio &harr; producto, calculada sobre los domicilios entregados.</p>
+            <p class="subtitle">Relación barrio &harr; producto, calculada sobre todos los domicilios pedidos.</p>
             <table>
                 <tr><th>Barrio</th><th>Producto más pedido</th><th>Unidades</th></tr>
                 {% for neighborhood, items in top_by_neighborhood.items() %}
@@ -62,7 +62,7 @@
                 <tr><td>{{ neighborhood }}</td><td>{{ name }}</td><td>{{ qty }}</td></tr>
                 {% endfor %}
                 {% else %}
-                <tr><td colspan="3">Aún no hay domicilios entregados.</td></tr>
+                <tr><td colspan="3">Aún no hay domicilios.</td></tr>
                 {% endfor %}
             </table>
         </div>

@@ -130,6 +130,8 @@
     }
 
     // ml5 solo sabe descargar el modelo; aquí se toma el modelo de TensorFlow.js de la red y se envía al servidor.
+    const horaLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19);
+
     async function guardar() {
         $("guardar").disabled = true;
         const datos = new FormData();
@@ -144,7 +146,7 @@
                 return { modelArtifactsInfo: { dateSaved: new Date(), modelTopologyType: "JSON" } };
             },
         });
-        archivo("model_meta.json", JSON.stringify({ ...red.neuralNetworkData.meta, _muestras: muestras.length, _precision: precision }));
+        archivo("model_meta.json", JSON.stringify({ ...red.neuralNetworkData.meta, _muestras: muestras.length, _precision: precision, _entrenado: horaLocal() }));
         archivo("muestras.json", JSON.stringify({ clases: CLASES, muestras }));
         const respuesta = await fetch("/api/gestos/modelo", { method: "POST", body: datos, headers: { "X-Entrenamiento-Token": TOKEN } });
         const r = await respuesta.json();

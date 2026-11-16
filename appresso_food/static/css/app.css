@@ -128,7 +128,16 @@ body {
     cursor: pointer;
 }
 
+/* Grupo "Equipo": páginas internas plegadas en el menú */
+.nav__equipo { position: relative; }
+.nav__equipo summary { list-style: none; padding: 8px 12px; border-radius: 999px; color: #fff; font-weight: 600; cursor: pointer; }
+.nav__equipo summary::-webkit-details-marker { display: none; }
+.nav__equipo summary::after { content: " ▾"; }
+.nav__equipo summary:hover, .nav__equipo summary.activo, .nav__equipo[open] summary { background: rgba(0, 0, 0, 0.22); }
+.nav__equipo div { position: absolute; right: 0; top: calc(100% + 8px); display: grid; gap: 2px; min-width: 190px; padding: 8px; border-radius: 14px; background: var(--marca-oscura); box-shadow: 0 8px 24px var(--shadow); }
+
 @media (max-width: 900px) {
+    .nav__equipo div { position: static; padding: 4px 0 0 12px; background: none; box-shadow: none; }
     .menu-movil { display: block; }
     .nav { display: none; width: 100%; flex-direction: column; margin: 0; padding-bottom: 14px; }
     .nav.abierto { display: flex; }
@@ -655,8 +664,6 @@ details.panel summary { cursor: pointer; }
     color: var(--marca);
 }
 
-.campos-fila { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 600px) { .campos-fila { grid-template-columns: 1fr; } }
 
 /* Las categorías siguen visibles bajo la barra mientras se recorre el menú */
 .chips {
@@ -881,3 +888,6 @@ table tr:hover td { background: var(--crema-3); }
     .marca small { letter-spacing: .08em; }
 }
 @media (max-width: 340px) { .marca small { display: none; } }
+.cajero { margin-bottom: 14px; }
+.cajero summary { color: var(--muted); font-weight: 600; cursor: pointer; }
+.cajero .field-group { margin-top: 8px; }

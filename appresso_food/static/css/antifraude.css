@@ -174,3 +174,6 @@ svg .w-label { fill: var(--text); font-weight: 700; font-size: 11px; }
 .kpis.kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 520px) { .kpis.kpis--3 { grid-template-columns: 1fr; } }
 .banner a { color: inherit; font-weight: 700; }
+
+/* Pago de un pedido (/transacciones?pedido=N): se oculta lo que es del laboratorio antifraude */
+html.pagando .solo-lab { display: none; }

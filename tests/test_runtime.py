@@ -5,6 +5,8 @@ from pathlib import Path
 from appresso_food.nucleo import runtime
 from appresso_food.nucleo import storage
 from appresso_food.nucleo.models import CHANNEL_DOMICILIO, CHANNEL_LOCAL, OrderItem
+from appresso_food.nucleo.growth import weeks_to_reach
+from appresso_food.nucleo.regression import predict_sales_numpy
 from appresso_food.nucleo.runtime import CoverageError
 
 
@@ -34,6 +36,29 @@ class RuntimeTest(unittest.TestCase):
     def test_out_of_coverage_neighborhood_is_rejected(self):
         with self.assertRaises(CoverageError):
             runtime.place_order("Ana", CHANNEL_DOMICILIO, "Ciudad Inexistente", self._cart(), served_by=None)
+
+    def test_deshacer_una_atencion_devuelve_el_pedido_a_su_puesto(self):
+        ids = [runtime.place_order(c, CHANNEL_LOCAL, None, self._cart(), served_by=None).order.order_id for c in "ABC"]
+        runtime.advance_pending()
+        runtime.undo_last()
+        self.assertEqual(runtime.pending_queue.as_list(), ids)  # antes quedaba de último
+
+    def test_pronostico_proyecta_desde_el_ultimo_dia_y_no_baja_de_cero(self):
+        self.assertAlmostEqual(predict_sales_numpy([1, 2, 3], days_ahead=1), 4)
+        self.assertAlmostEqual(predict_sales_numpy([10, 20, 30], days_ahead=7), 100)
+        self.assertEqual(predict_sales_numpy([30, 20, 10], days_ahead=7), 0)
+
+    def test_la_serie_diaria_cuenta_en_cero_los_dias_sin_pedidos(self):
+        order_id = runtime.place_order("Ana", CHANNEL_LOCAL, None, self._cart(quantity=3), served_by=None).order.order_id
+        conn = storage._connect()
+        conn.execute("UPDATE orders SET created_at = date('now', 'localtime', '-3 days') || 'T10:00:00' WHERE order_id = ?", (order_id,))
+        conn.commit()
+        conn.close()
+        self.assertEqual(storage.daily_totals(CHANNEL_LOCAL), [3, 0, 0, 0])
+
+    def test_sin_tendencia_de_aumento_no_hay_meta(self):
+        self.assertEqual(weeks_to_reach(10, start=4, difference=2), 3)
+        self.assertEqual(weeks_to_reach(10, start=4, difference=-2), -1)
 
     def test_undo_removes_created_order_and_restores_stock(self):
         ingredient_before = storage.get_ingredients()[0]

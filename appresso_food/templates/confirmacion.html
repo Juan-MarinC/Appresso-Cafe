@@ -11,7 +11,6 @@
     {% endfor %}
 
     <div class="panel">
-        <p class="eyebrow">Confirmación</p>
         <h1>¡Gracias, {{ order.client }}!</h1>
         {% if order.channel != 'domicilio' %}
         <div class="turno-confirmado">
@@ -34,14 +33,14 @@
         </div>
         {% endif %}
         <p class="subtitle">
-            Tu pedido quedó registrado como <strong>{{ order.status }}</strong> por el canal
-            <strong>{{ 'domicilio' if order.channel == 'domicilio' else 'local' }}</strong>{% if order.channel != 'domicilio' %},
-            <strong>{{ 'para llevar' if order.para_llevar else 'para comer aquí' }}</strong>{% endif %}.
+            Recibimos tu pedido
+            <strong>{{ 'a domicilio' if order.channel == 'domicilio' else 'para llevar' if order.para_llevar else 'para comer aquí' }}</strong>.
         </p>
+        {% if order.notas %}<p class="subtitle" id="notas-cocina">Para cocina: <strong>{{ order.notas }}</strong></p>{% endif %}
         {% if order.paid_txn %}
         <p class="subtitle" id="pagado">✅ Pagado con la transacción <strong>{{ order.paid_txn }}</strong>.</p>
         {% else %}
-        <a class="boton" id="pagar" href="/transacciones?pedido={{ order.order_id }}&valor={{ order.total|int }}">Pagar {{ order.total|pesos }}</a>
+        <a class="boton" id="pagar" href="/transacciones?pedido={{ order.order_id }}&valor={{ order.total|int }}&clave={{ order.pay_key }}">Pagar {{ order.total|pesos }}</a>
         {% endif %}
 
         <table>
@@ -54,17 +53,15 @@
 
         {% if order.channel == 'domicilio' %}
         <div class="route-info">
-            <h3>Ruta calculada con Dijkstra</h3>
+            <h3>Ruta de entrega</h3>
             <p class="route-path">{{ order.route | join(' &rarr; ') | safe }}</p>
             <p>Distancia: <strong>{{ "%.1f"|format(order.distance_km) }} km</strong> &middot; Tiempo estimado: <strong>{{ "%.0f"|format(order.eta_minutes) }} min</strong></p>
-            <p class="subtitle">El pedido entró al heap de despacho: entre más cerca esté el barrio, antes sale del restaurante.</p>
         </div>
         {% endif %}
 
         <div class="actions">
             <a class="button" href="/">Hacer otro pedido</a>
-            <a class="button secondary" href="/cocina">Ver cocina</a>
-            <a class="button secondary" href="/clientes/{{ order.client }}">Historial de {{ order.client }}</a>
+            <a class="button secondary" href="/clientes/{{ order.client }}">Mis pedidos</a>
         </div>
     </div>
 {% endblock %}

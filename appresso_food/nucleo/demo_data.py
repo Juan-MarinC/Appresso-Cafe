@@ -13,17 +13,17 @@ from appresso_food.nucleo.models import Product
 
 
 def generate_demo_orders(num: int, products: List[Product], neighborhoods: List[str], seed: int = 42) -> List[Order]:
-    random.seed(seed)
+    rng = random.Random(seed)  # generador propio: no altera el azar del resto de la app
     clients = [f"Cliente{i}" for i in range(1, 21)]
     orders: List[Order] = []
     for i in range(1, num + 1):
-        client = random.choice(clients)
-        channel = random.choice([CHANNEL_LOCAL, CHANNEL_DOMICILIO])
-        chosen_products = random.sample(products, k=min(len(products), random.randint(1, 4)))
+        client = rng.choice(clients)
+        channel = rng.choice([CHANNEL_LOCAL, CHANNEL_DOMICILIO])
+        chosen_products = rng.sample(products, k=min(len(products), rng.randint(1, 4)))
         items = [
-            OrderItem(product_id=p.id, product_name=p.name, quantity=random.randint(1, 5), unit_price=p.price)
+            OrderItem(product_id=p.id, product_name=p.name, quantity=rng.randint(1, 5), unit_price=p.price)
             for p in chosen_products
         ]
-        neighborhood = random.choice(neighborhoods) if channel == CHANNEL_DOMICILIO else None
+        neighborhood = rng.choice(neighborhoods) if channel == CHANNEL_DOMICILIO else None
         orders.append(Order(order_id=i, client=client, channel=channel, items=items, neighborhood=neighborhood))
     return orders

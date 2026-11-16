@@ -10,7 +10,6 @@ from appresso_food.nucleo.models import Order
 
 def find_order_linear(orders: List[Order], target_id: int, counter: OperationCounter) -> Optional[Order]:
     """Búsqueda lineal de un pedido por id. O(n) en el peor caso, O(1) en el mejor.
-    Se usa en la vista de cocina para localizar un pedido por su número.
     """
     for order in orders:
         counter.comparisons += 1
@@ -20,7 +19,7 @@ def find_order_linear(orders: List[Order], target_id: int, counter: OperationCou
 
 
 def total_units_sold(orders: List[Order], counter: OperationCounter) -> int:
-    """Suma todas las unidades vendidas recorriendo cada ítem de cada pedido. O(n)."""
+    """Suma todas las unidades vendidas: una suma por ítem. O(n) porque cada pedido trae pocos ítems (acotados)."""
     total = 0
     for order in orders:
         for item in order.items:
@@ -32,10 +31,12 @@ def total_units_sold(orders: List[Order], counter: OperationCounter) -> int:
 def recursive_total_units(orders: List[Order], counter: OperationCounter) -> int:
     """Mismo total que total_units_sold pero por divide y vencerás (recursividad
     controlada): reparte la lista en mitades hasta llegar a un pedido y combina
-    resultados. Trabajo total O(n), profundidad O(log n).
+    resultados. Trabajo total O(n): hace 2n - 1 llamadas. Lo logarítmico es solo
+    la profundidad de la recursión, O(log n).
     """
-    def analyze_range(start: int, end: int) -> int:
+    def analyze_range(start: int, end: int, depth: int = 1) -> int:
         counter.calls += 1
+        counter.max_depth = max(counter.max_depth, depth)
         if start >= end:
             return 0
         if end - start == 1:
@@ -46,8 +47,8 @@ def recursive_total_units(orders: List[Order], counter: OperationCounter) -> int
             return subtotal
 
         midpoint = start + (end - start) // 2
-        left_total = analyze_range(start, midpoint)
-        right_total = analyze_range(midpoint, end)
+        left_total = analyze_range(start, midpoint, depth + 1)
+        right_total = analyze_range(midpoint, end, depth + 1)
         counter.additions += 1
         return left_total + right_total
 

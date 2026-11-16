@@ -3,18 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#D62B1F">
+  <meta name="theme-color" content="#FFFFFF">
   <title>{% block titulo %}Appresso Food{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v=2">
+  <link rel="stylesheet" href="/static/css/estilo2.css">
   {% block estilos %}{% endblock %}
 </head>
 <body>
   {% set menu = [
     ('pedir', '/', 'Pedir'),
     ('gestos', '/gestos', 'Gestos'),
+  ] %}
+  {# Páginas internas (personal y parte técnica): van plegadas para no saturar a quien compra. #}
+  {% set equipo = [
     ('turnos', '/turnos', 'Turnos'),
     ('cocina', '/cocina', 'Cocina'),
     ('dashboard', '/dashboard', 'Dashboard'),
@@ -35,6 +39,14 @@
         {% for clave, ruta, texto in menu %}
         <a href="{{ ruta }}" {% if clave == pagina %}aria-current="page"{% endif %}>{{ texto }}</a>
         {% endfor %}
+        <details class="nav__equipo">
+          <summary {% if pagina in equipo|map('first')|list %}class="activo"{% endif %}>Equipo</summary>
+          <div>
+            {% for clave, ruta, texto in equipo %}
+            <a href="{{ ruta }}" {% if clave == pagina %}aria-current="page"{% endif %}>{{ texto }}</a>
+            {% endfor %}
+          </div>
+        </details>
       </nav>
     </div>
   </header>
@@ -53,7 +65,7 @@
     </div>
   </footer>
 
-  <script src="/static/js/nav.js"></script>
+  <script src="/static/js/nav.js?v=2"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

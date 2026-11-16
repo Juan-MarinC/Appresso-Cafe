@@ -1,0 +1,70 @@
+/* Estilo "catálogo" de toda la app (referencia: Food Ordering Product Catalog UI).
+   Se carga después de app.css y antes de la hoja propia de cada página.
+   Casi todo sale de cambiar las variables de app.css; lo demás son ajustes de forma. */
+:root {
+    --marca: #161412;
+    --marca-oscura: #161412;
+    --accion: #161412;
+    --accion-oscura: #000;
+    --rojo: #C62419; /* queda solo como acento: marca y "Popular" */
+    --crema: #FBF2EA;
+    --crema-3: #FBF2EA;
+    --bg: #fff;
+    --panel: #fff;
+    --border: #E9E3DC;
+    --text: #161412;
+    --muted: #6B625B;
+    --button-shadow: transparent;
+    --rayas: #fff;
+    --fuente-display: "Nunito", system-ui, sans-serif;
+}
+
+/* Barra blanca con pestañas en píldora */
+.barra { box-shadow: 0 1px 0 var(--border); }
+.marca strong, .menu-movil, .nav a, .nav__equipo summary { color: var(--text); }
+.marca strong span { color: var(--rojo); }
+.marca small { color: var(--muted); }
+.nav a:hover, .nav__equipo summary:hover { background: var(--crema); color: var(--text); }
+.nav a[aria-current="page"], .nav__equipo summary.activo, .nav__equipo[open] summary { background: var(--text); color: #fff; }
+@media (min-width: 901px) { .nav__equipo div a { color: #fff; } .nav__equipo div a:hover { background: rgba(255, 255, 255, .16); color: #fff; } }
+.barra :focus-visible { outline-color: var(--text); }
+.pie { background: var(--text); }
+
+/* Portada y cabeceras: planas, sin franjas de color */
+.hero { border-bottom: 0; }
+.hero .lead, .pagina-cabeza p { color: var(--muted); }
+.hero__imagen { border-radius: 24px; margin: 24px 0; }
+.pagina-cabeza { border-bottom: 1px solid var(--border); }
+.eyebrow, .hero .eyebrow { color: var(--muted); }
+h1, h2, h3, .hero__texto h1 { font-weight: 800; letter-spacing: -.01em; }
+
+/* Paneles sin sombra; el del menú va directo sobre el fondo blanco */
+.panel, .card { box-shadow: none; }
+.grid > .panel:first-child { border: 0; padding: 0; }
+.grid { grid-template-columns: 1fr 340px; gap: 32px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+/* Controles */
+label, .channel-toggle strong { color: var(--text); }
+.channel-toggle label { border-width: 1px; }
+.channel-toggle label:has(input:checked) { box-shadow: inset 0 0 0 1px var(--text); }
+.chip-cat { border-width: 1px; color: var(--text); font-weight: 700; }
+.primary-btn, .button, .boton { border-radius: 12px; }
+.barra-pedido button { background: #fff; color: var(--text); }
+
+/* Tarjetas del menú: fondo crema, sin borde, y solo el "+" hasta que se agrega algo */
+.menu-grid { gap: 10px; }
+.menu-card { border: 0; border-radius: 12px; background: var(--crema); }
+.menu-card:hover { transform: none; box-shadow: none; }
+.menu-card.elegido { box-shadow: inset 0 0 0 2px var(--text); }
+.menu-card__foto { border-radius: 12px 12px 0 0; }
+.menu-card .emoji { background: #fff; }
+.menu-card .price { font-size: 1.1rem; font-weight: 800; }
+.menu-card input[type="number"] { border: 0; background: transparent; }
+.menu-card:not(.elegido) .stepper__btn:not(.stepper__btn--mas),
+.menu-card:not(.elegido) input[type="number"] { visibility: hidden; }
+.popular-badge { top: 10px; left: 10px; right: auto; background: #fff; color: var(--rojo); box-shadow: none; }
+
+/* Tu pedido */
+.resumen__total strong { font-size: 2rem; font-weight: 800; }
+.ranking-item, .growth-list li { border: 0; }

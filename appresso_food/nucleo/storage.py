@@ -13,7 +13,7 @@ filtrando por neighborhoods.name.
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -69,7 +69,9 @@ CREATE TABLE IF NOT EXISTS orders (
     eta_minutes REAL,
     route TEXT,
     created_at TEXT NOT NULL,
-    para_llevar INTEGER NOT NULL DEFAULT 0
+    para_llevar INTEGER NOT NULL DEFAULT 0,
+    notas TEXT,
+    pay_key TEXT
 );
 
 -- Pago de un pedido en la pasarela (antifraude): una transacción paga un solo pedido.
@@ -99,8 +101,10 @@ def init_db() -> None:
     conn = _connect()
     conn.executescript(SCHEMA)
     # Bases creadas antes del kiosko: CREATE TABLE IF NOT EXISTS no agrega columnas nuevas.
-    if "para_llevar" not in {col[1] for col in conn.execute("PRAGMA table_info(orders)")}:
-        conn.execute("ALTER TABLE orders ADD COLUMN para_llevar INTEGER NOT NULL DEFAULT 0")
+    columnas = {col[1] for col in conn.execute("PRAGMA table_info(orders)")}
+    for nombre, tipo in (("para_llevar", "INTEGER NOT NULL DEFAULT 0"), ("notas", "TEXT"), ("pay_key", "TEXT")):
+        if nombre not in columnas:
+            conn.execute(f"ALTER TABLE orders ADD COLUMN {nombre} {tipo}")
     conn.commit()
     _seed_if_empty(conn)
     conn.close()
@@ -284,8 +288,9 @@ def create_order(order: Order) -> int:
 
     cur.execute(
         """
-        INSERT INTO orders (client, channel, neighborhood_id, status, served_by, distance_km, eta_minutes, route, created_at, para_llevar)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO orders (client, channel, neighborhood_id, status, served_by, distance_km, eta_minutes, route, created_at,
+                            para_llevar, notas, pay_key)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             order.client,
@@ -298,6 +303,8 @@ def create_order(order: Order) -> int:
             json.dumps(order.route) if order.route else None,
             order.created_at,
             int(order.para_llevar),
+            order.notas,
+            order.pay_key,
         ),
     )
     order_id = cur.lastrowid
@@ -346,7 +353,7 @@ def update_order_status(order_id: int, status: str) -> None:
 
 def _row_to_order(conn: sqlite3.Connection, row) -> Order:
     (order_id, client, channel, neighborhood_name, status, served_by,
-     distance_km, eta_minutes, route_json, created_at, para_llevar, paid_txn) = row
+     distance_km, eta_minutes, route_json, created_at, para_llevar, notas, pay_key, paid_txn) = row
     items_rows = conn.execute(
         """
         SELECT oi.product_id, p.name, oi.quantity, oi.unit_price
@@ -370,13 +377,15 @@ def _row_to_order(conn: sqlite3.Connection, row) -> Order:
         route=json.loads(route_json) if route_json else None,
         created_at=created_at,
         para_llevar=bool(para_llevar),
+        notas=notas,
+        pay_key=pay_key,
         paid_txn=paid_txn,
     )
 
 
 _ORDER_SELECT = """
     SELECT o.order_id, o.client, o.channel, n.name, o.status, o.served_by,
-           o.distance_km, o.eta_minutes, o.route, o.created_at, o.para_llevar, pay.id_txn
+           o.distance_km, o.eta_minutes, o.route, o.created_at, o.para_llevar, o.notas, o.pay_key, pay.id_txn
     FROM orders o
     LEFT JOIN neighborhoods n ON n.id = o.neighborhood_id
     LEFT JOIN order_payments pay ON pay.order_id = o.order_id
@@ -485,7 +494,8 @@ def channel_summary() -> Dict[str, Dict[str, float]]:
 
 
 def daily_totals(channel: Optional[str] = None) -> List[float]:
-    """Unidades vendidas por día (para la proyección de ventas)."""
+    """Unidades vendidas cada día, desde el primer pedido hasta hoy (para la proyección de ventas).
+    Los días sin pedidos cuentan como 0: si se saltaran, la recta trataría días separados como seguidos."""
     conn = _connect()
     query = """
         SELECT substr(o.created_at, 1, 10) AS day, SUM(oi.quantity) AS units
@@ -499,7 +509,15 @@ def daily_totals(channel: Optional[str] = None) -> List[float]:
     query += " GROUP BY day ORDER BY day"
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return [row[1] for row in rows]
+    if not rows:
+        return []
+    por_dia = dict(rows)
+    dia, fin = date.fromisoformat(rows[0][0]), max(date.today(), date.fromisoformat(rows[-1][0]))
+    serie = []
+    while dia <= fin:
+        serie.append(por_dia.get(dia.isoformat(), 0))
+        dia += timedelta(days=1)
+    return serie
 
 
 # ---------------------------------------------------------------------------
