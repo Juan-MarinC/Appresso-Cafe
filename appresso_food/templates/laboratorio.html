@@ -18,19 +18,19 @@
         <p class="eyebrow">Programación avanzada</p>
         <h2>Laboratorio de algoritmos</h2>
         <p class="subtitle">
-            Genera pedidos sintéticos (no se guardan en la base de datos) y mide cuántas operaciones
-            hacen los algoritmos de búsqueda, suma y recursividad cuando crece el tamaño de la entrada n.
+            Genera pedidos sintéticos (no se guardan en la base de datos) y cuenta las operaciones de búsqueda,
+            suma y recursividad con cada tamaño n hasta el que elijas, para comparar cómo crecen.
         </p>
 
         <form method="post" action="/laboratorio">
             <div class="field-group">
-                <label for="size">Cantidad de pedidos de prueba (n)</label>
+                <label for="size">Cantidad máxima de pedidos de prueba (n)</label>
                 <select name="size" id="size">
-                    <option value="10">10</option>
-                    <option value="100" selected>100</option>
-                    <option value="1000">1.000</option>
-                    <option value="10000">10.000</option>
-                    <option value="25000">25.000</option>
+                    <option value="10"{% if result and result.size == 10 %} selected{% endif %}>10</option>
+                    <option value="100"{% if result and result.size == 100 %} selected{% endif %}>100</option>
+                    <option value="1000"{% if result and result.size == 1000 %} selected{% endif %}>1.000</option>
+                    <option value="10000"{% if not result or result.size == 10000 %} selected{% endif %}>10.000</option>
+                    <option value="25000"{% if result and result.size == 25000 %} selected{% endif %}>25.000</option>
                 </select>
             </div>
             <button type="submit" class="primary-btn">Ejecutar algoritmos</button>
@@ -38,31 +38,33 @@
     </div>
 
     {% if result %}
-    <div class="summary" style="margin-top: 20px;">
-        <div class="card accent">
-            <div class="label">Búsqueda lineal O(n)</div>
-            <div class="value">{{ result.find_ops }}</div>
-            <small>comparaciones para ubicar un pedido.</small>
+    <div class="panel" style="margin-top: 20px;">
+        <h2>Operaciones contadas</h2>
+        <div class="tabla-scroll">
+        <table>
+            <tr>
+                <th>n (pedidos)</th>
+                <th>Búsqueda lineal<br><small>comparaciones, peor caso · O(n)</small></th>
+                <th>Suma de unidades<br><small>sumas · O(n)</small></th>
+                <th>Recursividad<br><small>llamadas · O(n)</small></th>
+                <th>Recursividad<br><small>profundidad · O(log n)</small></th>
+                <th>Tiempo</th>
+            </tr>
+            {% for f in result.filas %}
+            <tr><td>{{ f.n }}</td><td>{{ f.comparaciones }}</td><td>{{ f.sumas }}</td><td>{{ f.llamadas }}</td><td>{{ f.profundidad }}</td><td>{{ "%.2f"|format(f.ms) }} ms</td></tr>
+            {% endfor %}
+        </table>
         </div>
-        <div class="card">
-            <div class="label">Suma de unidades O(n)</div>
-            <div class="value">{{ result.total_ops }}</div>
-            <small>sumas acumuladas.</small>
-        </div>
-        <div class="card">
-            <div class="label">Recursividad</div>
-            <div class="value">{{ result.rec_calls }}</div>
-            <small>llamadas (divide y vencerás, O(log n) de profundidad).</small>
-        </div>
-        <div class="card">
-            <div class="label">Tiempo real</div>
-            <div class="value">{{ "%.2f"|format(result.elapsed_ms) }} ms</div>
-            <small>para n = {{ result.size }} pedidos.</small>
-        </div>
+        <ul class="subtitle">
+            <li><strong>Búsqueda lineal:</strong> se busca el último pedido (peor caso), así que hace exactamente n comparaciones. Con n × 10, comparaciones × 10: O(n).</li>
+            <li><strong>Suma:</strong> una suma por cada producto de cada pedido (de 1 a 4 por pedido), por eso da algo más que n pero crece en la misma proporción: O(n).</li>
+            <li><strong>Recursividad (divide y vencerás):</strong> parte la lista en mitades y hace 2n − 1 llamadas, o sea O(n) de trabajo. Lo único logarítmico es la profundidad: con n × 10 solo baja 3 o 4 niveles más, O(log n).</li>
+            <li><strong>Tiempo:</strong> depende del equipo y varía entre ejecuciones; el conteo de operaciones no.</li>
+        </ul>
     </div>
 
     <div class="actions">
-        <a class="button secondary" href="/download/operation_counts.csv">Descargar CSV</a>
+        <a class="button secondary" href="/laboratorio/operation_counts.csv?size={{ result.size }}">Descargar CSV</a>
     </div>
     {% endif %}
 {% endblock %}

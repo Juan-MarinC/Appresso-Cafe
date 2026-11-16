@@ -10,8 +10,8 @@
 {% block hero %}
 <section class="pagina-cabeza">
   <div class="pagina-cabeza__fila">
-    <h1>Transacciones</h1>
-    <p>Registro de compras y detección de anomalías en vivo.</p>
+    <h1 id="titulo-pagina">Transacciones</h1>
+    <p class="solo-lab">Registro de compras y detección de anomalías en vivo.</p>
   </div>
 </section>
 {% endblock %}
@@ -30,9 +30,9 @@
     <div class="cols-main fx">
         <div class="stack">
             <div class="panel">
-                <p class="eyebrow">Nueva transacción</p>
-                <h2>Enviar una compra</h2>
-                <p class="subtitle">
+                <p class="eyebrow solo-lab">Nueva transacción</p>
+                <h2 id="titulo-form">Enviar una compra</h2>
+                <p class="subtitle solo-lab">
                     Regla principal: <strong>{{ config.max_transactions }} o más transacciones del mismo usuario dentro de
                     {{ "%g"|format(config.window_seconds) }} segundos</strong> se marcan como posible fraude.
                     Cada usuario (correo) tiene su propia ventana deslizante.
@@ -41,7 +41,7 @@
                 <div class="banner warn" id="pagando" hidden></div>
                 <form id="txn-form" novalidate style="margin-top: 18px;">
                     <div class="row">
-                        <div class="field-group">
+                        <div class="field-group solo-lab">
                             <label for="f-id">ID de transacción</label>
                             <div class="inline">
                                 <input type="text" id="f-id" autocomplete="off" />
@@ -70,7 +70,7 @@
                     </div>
 
                     <div class="row">
-                        <div class="field-group" style="grid-column: 1 / -1;">
+                        <div class="field-group solo-lab" style="grid-column: 1 / -1;">
                             <label for="f-date">Fecha y hora</label>
                             <div class="inline">
                                 <input type="text" id="f-date" autocomplete="off" />
@@ -93,7 +93,7 @@
                         </div>
                     </div>
 
-                    <div class="field-group">
+                    <div class="field-group solo-lab">
                         <label for="f-hash">Hash HMAC-SHA256 (opcional)</label>
                         <div class="inline">
                             <input type="text" id="f-hash" autocomplete="off" placeholder="Vacío: el servidor lo calcula y lo guarda" />
@@ -104,7 +104,7 @@
                         <div class="field-error" data-err="hash"></div>
                     </div>
 
-                    <label class="check"><input type="checkbox" id="f-novalidate" /> Modo prueba: enviar aunque el navegador detecte errores (para ver cómo responde el backend)</label>
+                    <label class="check solo-lab"><input type="checkbox" id="f-novalidate" /> Modo prueba: enviar aunque el navegador detecte errores (para ver cómo responde el backend)</label>
 
                     <div class="btn-row">
                         <button type="submit" class="btn primary" id="btn-send">Enviar transacción</button>
@@ -112,7 +112,7 @@
                 </form>
             </div>
 
-            <div class="panel">
+            <div class="panel solo-lab">
                 <h2>Ráfaga (simula un bot)</h2>
                 <p class="subtitle">Envía varias transacciones seguidas del usuario de arriba, con IDs nuevos y la hora actual, para ver la ventana llenarse.</p>
                 <div class="row3" style="margin-top: 12px;">
@@ -123,7 +123,7 @@
                 <div id="burst-log"></div>
             </div>
 
-            <div class="panel">
+            <div class="panel solo-lab">
                 <h2>JSON crudo y casos de prueba</h2>
                 <p class="subtitle">Pruebe el endpoint <code>POST /api/transactions</code> con cualquier cuerpo, incluso JSON mal formado.</p>
                 <div class="inline" style="margin: 12px 0;">
@@ -141,7 +141,7 @@
                 <h2>Resultado</h2>
                 <div id="result"><div class="empty">Envíe una transacción para ver el resultado, el hash y el estado de la ventana deslizante.</div></div>
             </div>
-            <div class="panel">
+            <div class="panel solo-lab">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
                     <h2 style="margin:0;">Últimas transacciones</h2>
                     <a class="btn small" href="/antifraude" style="text-decoration:none;">Abrir dashboard &rarr;</a>

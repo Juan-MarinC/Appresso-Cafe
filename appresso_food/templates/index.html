@@ -31,7 +31,6 @@
         <div class="panel">
             <p class="eyebrow">Nuevo pedido</p>
             <h2 class="titulo-pedido">¿Qué se le antoja hoy?</h2>
-            <p class="subtitle">Elige del menú, indica el canal (mostrador o domicilio) y confirma. Si es domicilio, calculamos la ruta más corta con el grafo de barrios.</p>
 
             <form method="post" action="/pedidos" id="order-form">
                 <input type="hidden" name="pedido_token" value="{{ pedido_token }}" />
@@ -52,16 +51,17 @@
                     </select>
                 </div>
 
-                <div class="campos-fila">
+                <div class="field-group">
+                    <label for="client">Tu nombre</label>
+                    <input type="text" id="client" name="client" placeholder="Ej: Belén Castilla" required />
+                </div>
+                <details class="cajero" {% if served_by %}open{% endif %}>
+                    <summary>Soy cajero/a</summary>
                     <div class="field-group">
-                        <label for="client">Nombre del cliente</label>
-                        <input type="text" id="client" name="client" placeholder="Ej: Belén Castilla" required />
-                    </div>
-                    <div class="field-group">
-                        <label for="served_by">Atendido por (cajero/a)</label>
+                        <label for="served_by">Atendido por</label>
                         <input type="text" id="served_by" name="served_by" placeholder="Tu nombre" value="{{ served_by }}" />
                     </div>
-                </div>
+                </details>
 
                 {% set emojis = {'Hamburguesas':'🍔','Perros calientes':'🌭','Pollo':'🍗','Acompañantes':'🍟','Pizza':'🍕','Saludable':'🥗','Bebidas':'🥤'} %}
                 <h2 class="seccion-titulo">Menú</h2>
@@ -95,9 +95,6 @@
                     {% endfor %}
                 </div>
 
-                <div style="margin-top: 20px;">
-                    <button type="submit" class="primary-btn">Confirmar pedido</button>
-                </div>
             </form>
         </div>
 

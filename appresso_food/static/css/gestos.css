@@ -31,16 +31,6 @@
 
 .guia { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 12px; }
 .guia li { display: flex; gap: 12px; align-items: center; }
-.guia__icono {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: var(--crema);
-    font-size: 1.7rem;
-}
 
 .combos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 .combo {
@@ -77,7 +67,6 @@
 .combo__precio { margin: auto 0 10px; font-family: var(--fuente-titulos); font-size: 1.5rem; font-weight: 600; color: var(--text); }
 
 .gestos__ayuda { width: 100%; margin: 0 0 16px; }
-.combo__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 14px; }
 .combo__cantidad { width: auto; min-width: 72px; padding: 6px 10px; border-radius: 10px; }
 
 /* Kiosko: bienvenida (comer aquí o para llevar) y carrito con varios combos */
@@ -99,7 +88,6 @@
     font-weight: 600;
     cursor: pointer;
 }
-.bienvenida__opcion span { font-size: 3rem; line-height: 1; }
 .bienvenida__opcion small { color: var(--muted); font-family: inherit; font-size: 14px; }
 .bienvenida__opcion:hover, .bienvenida__opcion:focus-visible { border-color: var(--marca); }
 .menu-kiosko { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
@@ -172,11 +160,6 @@
 .kiosko .progreso { margin-top: 8px; height: 10px; }
 .kiosko .lectura { margin-top: 4px; font-size: 14px; }
 
-.guia-titulo { margin: 6px 0 8px; font-size: 1.15rem; }
-.guia-titulo small { font-family: var(--fuente-texto, inherit); font-size: 13px; font-weight: 500; color: var(--muted); }
-.guia--compacta { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; margin-bottom: 10px; font-size: 13.5px; line-height: 1.25; }
-.guia--compacta li { gap: 8px; }
-.guia--compacta .guia__icono { width: 36px; height: 36px; font-size: 1.2rem; }
 .kiosko .gestos__ayuda { margin: 0; padding-block: 8px; }
 
 /* Menú: tarjetas horizontales en 2 × 2 y el pedido al lado */
@@ -193,7 +176,6 @@
 .kiosko .combo__items { margin-bottom: 4px; font-size: 13px; line-height: 1.3; }
 .kiosko .combo__precio { margin: auto 0 0; font-size: 1.3rem; }
 .kiosko .combo__acciones { grid-area: acciones; display: flex; align-items: center; gap: 8px; }
-.kiosko .combo__fila { margin: 0; flex: none; }
 .kiosko .combo__acciones .primary-btn { flex: 1; padding-block: 9px; }
 .kiosko .carrito { margin-top: 0; top: 86px; padding: 16px; }
 .kiosko .carrito h2 { margin-bottom: 4px; font-size: 1.3rem; }
@@ -210,5 +192,46 @@
     .kiosko .visor { width: 100%; min-width: 0; }
 }
 @media (max-width: 560px) {
-    .kiosko .combos, .guia--compacta { grid-template-columns: minmax(0, 1fr); }
+    .kiosko .combos { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Kiosko: sugerencia de un extra, notas para cocina y opciones de accesibilidad */
+.oferta { margin: 0 0 10px; padding: 10px; border: 2px dashed var(--marca); border-radius: 12px; background: var(--crema-3); }
+.oferta[hidden] { display: none; }
+.oferta p { margin: 0 0 8px; font-weight: 700; }
+.oferta__botones { display: flex; gap: 8px; }
+.oferta__botones button { flex: 1; margin: 0; padding: 8px 6px; font-size: 14px; }
+.notas { margin: 0 0 10px; padding: 6px 10px 8px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; }
+.notas legend { padding: 0 4px; font-weight: 700; }
+.notas label { display: inline-flex; align-items: center; gap: 4px; margin: 2px 10px 2px 0; font-weight: 400; }
+.notas input { width: auto; margin: 0; }
+.accesibilidad { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.accesibilidad .button { flex: 1 1 auto; margin: 0; padding: 8px 10px; font-size: 13px; }
+.accesibilidad [hidden] { display: none; }
+.accesibilidad [aria-pressed="true"] { background: var(--text); border-color: var(--text); color: #fff; }
+html.texto-grande .shell--kiosko { zoom: 1.2; }
+html.alto-contraste {
+    --text: #000; --muted: #1a1a1a; --border: #000; --bg: #fff; --panel: #fff; --crema: #fff; --crema-3: #fff;
+    --marca: #8f0f08; --marca-oscura: #5e0803; --accion: #8f0f08; --accion-oscura: #5e0803;
+}
+html.alto-contraste .panel, html.alto-contraste .combo { border: 2px solid #000; }
+
+/* Kiosko limpio: lo secundario (guía, accesibilidad, notas) va plegado y sin iconos */
+.plegable { margin-top: 10px; border-top: 1px solid var(--border); }
+.plegable summary { padding: 10px 0 4px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.plegable[open] summary { color: var(--text); }
+.kiosko .guia { gap: 6px; margin: 0 0 6px; font-size: 14px; }
+.kiosko .guia li { display: block; }
+.guia__nota { margin: 4px 0 8px; font-size: 14px; color: var(--muted); }
+.kiosko .gestos__ayuda { margin-top: 12px; }
+.kiosko .accesibilidad { margin: 6px 0; }
+.kiosko .lectura { font-weight: 400; color: var(--muted); }
+.kiosko .notas { border: 0; padding: 0; margin: 4px 0 10px; }
+.kiosko .oferta { border: 1px solid var(--border); background: var(--panel); }
+.kiosko .bienvenida__opcion { padding: 34px 12px; }
+.kiosko #carrito-vaciar { display: block; margin: 4px auto 0; color: var(--muted); }
+.kiosko #carrito-vaciar[disabled] { visibility: hidden; }
+.kiosko__equipo { margin: 18px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+.kiosko__equipo a { color: inherit; }
+.solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.bienvenida__opcion span { font-size: 3rem; line-height: 1; }

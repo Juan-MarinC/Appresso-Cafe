@@ -1,5 +1,6 @@
 """Modelos de dominio: productos, ingredientes, pedidos y barrios."""
 
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional
@@ -59,6 +60,9 @@ class Order:
     route: Optional[List[str]] = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
     para_llevar: bool = False  # kiosko: comer aquí o para llevar (solo canal local)
+    notas: Optional[str] = None  # kiosko: indicaciones para cocina ("Sin queso, Sin salsa")
+    # Clave que solo recibe quien ve la confirmación: sin ella nadie puede marcar el pedido como pagado.
+    pay_key: Optional[str] = field(default_factory=lambda: secrets.token_urlsafe(16))
     paid_txn: Optional[str] = None  # idTxn de la pasarela con que se pagó
 
     @property

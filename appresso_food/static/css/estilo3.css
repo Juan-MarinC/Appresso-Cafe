@@ -1,0 +1,46 @@
+/* Estilo "blanco y negro editorial" de toda la app.
+   Va encima de estilo2.css: grises en vez de crema, títulos grandes en mayúsculas,
+   portada a pantalla completa y categorías en círculos. */
+:root {
+    --crema: #F6F6F6;
+    --crema-3: #F6F6F6;
+    --border: #E4E4E4;
+    --text: #000;
+    --marca: #000;
+    --marca-oscura: #000;
+    --accion: #000;
+    --muted: #5F5F5F;
+    --fuente: "Inter Tight", system-ui, sans-serif;
+    --fuente-display: "Inter Tight", system-ui, sans-serif;
+}
+
+h1, h2, .seccion-titulo, .canal legend { text-transform: uppercase; letter-spacing: -.03em; font-weight: 800; line-height: 1; }
+.panel .titulo-pedido { font-size: clamp(2.2rem, 5.5vw, 4rem); }
+.primary-btn, .button, .boton { border-radius: 999px; }
+
+/* Portada: la foto ocupa todo y el texto va encima, centrado */
+.hero { position: relative; background: #000; }
+.hero__fila { display: grid; grid-template-columns: 1fr; place-items: center; max-width: none; min-height: min(78vh, 720px); padding: 0; text-align: center; }
+.hero__imagen { position: absolute; inset: 0; margin: 0; border-radius: 0; background: #000; }
+.hero__imagen::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .45); } /* para que el texto blanco se lea sobre cualquier foto */
+.hero__texto { position: relative; z-index: 1; padding: 60px 20px; }
+.hero__texto h1 { max-width: 16ch; margin-inline: auto; color: #fff; font-size: clamp(2.6rem, 7vw, 5.5rem); }
+.hero .lead { max-width: 46ch; margin-inline: auto; color: #fff; }
+.hero .eyebrow { color: #fff; }
+.hero__acciones { justify-content: center; }
+.hero .boton { background: #fff; border-color: #fff; color: #000; }
+.hero .boton--contorno { background: transparent; color: #fff; }
+.hero .boton:hover { background: #000; border-color: #000; color: #fff; }
+.hero :focus-visible { outline-color: #fff; }
+
+/* Categorías: círculo con el icono y el nombre debajo */
+.chips { gap: 18px; padding: 14px 0; }
+@media (min-width: 601px) { .chips { justify-content: center; } } /* centrado con scroll lateral esconde los primeros en el teléfono */
+.chip-cat, .chip-cat:hover, .chip-cat[aria-pressed="true"] { flex-direction: column; gap: 8px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--text); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.chip-cat > span, .chip-cat:not(:has(span))::before { display: grid; place-items: center; width: 64px; height: 64px; border: 1px solid var(--border); border-radius: 50%; background: #fff; font-size: 1.6rem; }
+.chip-cat:not(:has(span))::before { content: "🍽️"; }
+.chip-cat:hover > span, .chip-cat:hover::before { border-color: var(--text); }
+.chip-cat[aria-pressed="true"] > span, .chip-cat[aria-pressed="true"]::before { border-color: var(--text); background: var(--text); }
+
+.menu-card, .menu-card__foto { border-radius: 16px; }
+.menu-card__foto { border-radius: 16px 16px 0 0; }

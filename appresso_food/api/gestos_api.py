@@ -74,7 +74,11 @@ async def model_status():
     datos = json.loads(meta.read_text(encoding="utf-8"))
     salida = next(iter(datos.get("outputs", {}).values()), {})  # ml5 nombra la salida "0" cuando se entrena con listas
     clases = list(salida.get("uniqueValues", []))
-    return {"existe": True, "guardado": datetime.fromtimestamp(meta.stat().st_mtime).isoformat(timespec="seconds"),
+    # La fecha del archivo cambia al clonar el repositorio: se prefiere la que anotó /entrenar al guardar.
+    entrenado = datos.get("_entrenado")
+    if not isinstance(entrenado, str):
+        entrenado = datetime.fromtimestamp(meta.stat().st_mtime).isoformat(timespec="seconds")
+    return {"existe": True, "guardado": entrenado,
             "clases": clases, "muestras": datos.get("_muestras"), "precision": datos.get("_precision")}
 
 

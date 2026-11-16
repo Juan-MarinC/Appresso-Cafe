@@ -59,7 +59,7 @@ def init_runtime() -> None:
 
 
 def place_order(client: str, channel: str, neighborhood: Optional[str], items: List[OrderItem], served_by: Optional[str],
-                para_llevar: bool = False) -> OrderResult:
+                para_llevar: bool = False, notas: Optional[str] = None) -> OrderResult:
     route = None
     distance_km = None
     eta_minutes = None
@@ -89,6 +89,7 @@ def place_order(client: str, channel: str, neighborhood: Optional[str], items: L
         eta_minutes=eta_minutes,
         route=route,
         para_llevar=para_llevar and channel == CHANNEL_LOCAL,
+        notas=notas,
     )
     order.order_id = storage.create_order(order)
 
@@ -144,7 +145,7 @@ def undo_last() -> Optional[str]:
 
     if action.kind == "avanzar_pedido":
         storage.update_order_status(action.order_id, STATUS_SOLICITADO)
-        pending_queue.enqueue(action.order_id)
+        pending_queue.restore(action.order_id)
         order = storage.get_order(action.order_id)
         if order and order.channel == CHANNEL_DOMICILIO and order.distance_km is not None:
             dispatch_heap.push(order.order_id, order.client, order.neighborhood, order.distance_km, order.eta_minutes or 0.0)
@@ -153,7 +154,7 @@ def undo_last() -> Optional[str]:
     if action.kind == "despachar_domicilio":
         entry: DispatchEntry = action.payload
         storage.update_order_status(entry.order_id, STATUS_SOLICITADO)
-        pending_queue.enqueue(entry.order_id)
+        pending_queue.restore(entry.order_id)
         dispatch_heap.push(entry.order_id, entry.client, entry.neighborhood, entry.distance_km, entry.eta_minutes)
         return f"Se regresó el domicilio #{entry.order_id} al heap de despacho."
 

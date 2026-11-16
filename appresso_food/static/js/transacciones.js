@@ -88,12 +88,12 @@
         return payload;
     }
 
-    // Llegando desde la confirmación de un pedido (?pedido=3&valor=82000), el pago aceptado se une a ese pedido.
+    // Llegando desde la confirmación de un pedido (?pedido=3&valor=82000&clave=…), el pago aceptado se une a ese pedido.
     const params = new URLSearchParams(location.search);
     const pedido = /^\d+$/.test(params.get("pedido") || "") ? params.get("pedido") : null;
 
     async function pagarPedido(idTxn) {
-        const res = await api(`/api/pedidos/${pedido}/pago`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idTxn }) });
+        const res = await api(`/api/pedidos/${pedido}/pago`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idTxn, clave: params.get("clave") || "" }) });
         const detalle = res.data && res.data.detail;
         $("pagando").className = `banner ${res.ok ? "ok" : "bad"}`;
         $("pagando").textContent = res.ok ? `Pedido #${pedido} pagado con la transacción ${idTxn}.`
@@ -295,6 +295,10 @@
             if (/^\d+$/.test(params.get("valor") || "")) $("f-value").value = params.get("valor");
             $("pagando").hidden = false;
             $("pagando").textContent = `Pagando el pedido #${pedido}: el valor ya es el total del pedido.`;
+            // Quien paga ve solo sus datos y el botón; lo de laboratorio (.solo-lab) se oculta por CSS.
+            document.documentElement.classList.add("pagando");
+            $("titulo-pagina").textContent = $("titulo-form").textContent = "Pagar tu pedido";
+            $("btn-send").textContent = "Pagar";
         }
         fillPresets();
         $("txn-form").addEventListener("submit", submitForm);
