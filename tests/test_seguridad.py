@@ -68,6 +68,24 @@ class LogsSinDatosSensiblesTest(unittest.TestCase):
         self.assertEqual(http_log._ocultar('{"cedula": 1012345678}'), '{"cedula": "***"}')
         self.assertEqual(http_log._ocultar("nombre=Ana&cedula=1012345678"), "nombre=Ana&cedula=***")
 
+    def test_tampoco_con_otras_formas_de_escribirla(self):
+        casos = {
+            '{"Cédula": "1012345678"}': '{"Cédula": "***"}',
+            '{"datos": {"CEDULA": 123456789, "otros": [{"clave": "x"}]}}': '{"datos": {"CEDULA": "***", "otros": [{"clave": "***"}]}}',
+            '{"c\\u00e9dula": "1012345678"}': '{"cédula": "***"}',
+            "nombre=Ana&c%C3%A9dula=1012345678&pedido-token=zz": "nombre=Ana&c%C3%A9dula=***&pedido-token=***",
+            '{"idTxn": "1", "cedula": "10123': '{"idTxn": "1", "cedula": "***"',  # cuerpo cortado por el límite
+            'name="cedula"\r\n\r\n1012345678\r\n': 'name="cedula"\r\n\r\n***\r\n',  # multipart
+        }
+        for original, esperado in casos.items():
+            self.assertEqual(http_log._ocultar(original), esperado, original)
+
+    def test_un_cuerpo_en_latin1_tambien_se_oculta(self):
+        # Algunas terminales de Windows mandan "Cédula" en Latin-1, no en UTF-8.
+        cuerpo = '{"Cédula": "1098765432"}'.encode("latin-1")
+        self.assertNotIn("1098765432", http_log._text(cuerpo))
+        self.assertEqual(http_log._decodificar("añ".encode("utf-8")[:-1]), "a")  # letra partida por el corte
+
     def test_la_traza_no_se_entrega_por_la_url_publica(self):
         entrada = {"n": 999999, "traza": "Traceback (most recent call last): ...", "id": "x"}
         app = FastAPI()

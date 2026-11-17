@@ -16,13 +16,14 @@ import logging
 import threading
 import time
 import traceback
+import unicodedata
 import uuid
 from collections import deque
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlsplit
+from urllib.parse import unquote_plus, urlsplit
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -87,21 +88,65 @@ def _origin(host: str, forwarded: bool) -> str:
 
 
 # /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos;
-# la cédula tampoco, porque es un dato personal.
-_SECRETOS = r"clave|token|pedido_token|cedula|c[eé]dula"
-_SECRETO_FORM = re.compile(rf"\b({_SECRETOS})=[^&\s]*")
-_SECRETO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)(?:"(?:[^"\\]|\\.)*"|-?\d[\d.eE+-]*)')
+# la cédula tampoco, porque es un dato personal. Se compara el nombre del campo sin mayúsculas, tildes ni signos
+# ("Cédula", "pedido-token" y "c%C3%A9dula" cuentan igual).
+_SENSIBLES = {"clave", "token", "pedidotoken", "cedula"}
+# Respaldo para lo que no se puede leer como JSON o formulario (un cuerpo cortado, multipart): por nombre, sin
+# importar mayúsculas, y aunque el valor quede sin cerrar por el corte.
+_SECRETOS = r"clave|token|pedido_token|c[eé]dula"
+_SECRETO_TEXTO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)(?:"(?:[^"\\]|\\.)*(?:"|$)|-?\d[\d.eE+-]*)', re.I)
+_SECRETO_MULTIPART = re.compile(rf'(name="(?:{_SECRETOS})"\r?\n\r?\n)[^\r\n]*', re.I)
+
+
+def _sensible(nombre) -> bool:
+    sin_tildes = unicodedata.normalize("NFKD", str(nombre)).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", sin_tildes.lower()) in _SENSIBLES
+
+
+def _ocultar_datos(dato):
+    """Reemplaza los campos sensibles a cualquier profundidad de un JSON ya leído."""
+    if isinstance(dato, dict):
+        return {k: "***" if _sensible(k) else _ocultar_datos(v) for k, v in dato.items()}
+    if isinstance(dato, list):
+        return [_ocultar_datos(v) for v in dato]
+    return dato
+
+
+def _ocultar_form(text: str) -> str:
+    """Formulario o query (a=1&b=2): oculta el valor de los campos sensibles sin tocar cómo venía escrito el resto."""
+    partes = []
+    for parte in text.split("&"):
+        nombre, igual, _ = parte.partition("=")
+        partes.append(f"{nombre}=***" if igual and _sensible(unquote_plus(nombre)) else parte)
+    return "&".join(partes)
 
 
 def _ocultar(text: str) -> str:
-    text = _SECRETO_FORM.sub(r"\1=***", text)
-    return _SECRETO_JSON.sub(r'"\1"\2"***"', text)
+    try:
+        return json.dumps(_ocultar_datos(json.loads(text)), ensure_ascii=False)
+    except ValueError:
+        pass
+    if "\n" not in text:
+        text = _ocultar_form(text)
+    text = _SECRETO_TEXTO_JSON.sub(r'"\1"\2"***"', text)
+    return _SECRETO_MULTIPART.sub(r"\1***", text)
+
+
+def _decodificar(raw: bytes) -> str:
+    """UTF-8; si el corte partió una letra, sin esos últimos bytes; si no es UTF-8 (algunas terminales de Windows
+    mandan Latin-1), como cp1252. Con errors="replace", "Cédula" quedaba "C�dula" y ya no se reconocía para ocultarla."""
+    for fin in range(len(raw), max(len(raw) - 4, -1), -1):
+        try:
+            return raw[:fin].decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("cp1252", errors="replace")
 
 
 def _text(raw: bytes) -> Optional[str]:
     if not raw:
         return None
-    text = _ocultar(raw.decode("utf-8", errors="replace"))
+    text = _ocultar(_decodificar(raw))
     return text + " …(recortado)" if len(raw) >= MAX_BODY_CHARS else text
 
 
