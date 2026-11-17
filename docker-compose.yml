@@ -1,0 +1,42 @@
+# Levantar:  docker compose up -d --build     Ver:  http://localhost:8000
+# Detener:   docker compose down               (los datos quedan en los volúmenes)
+services:
+  app:
+    build: .
+    ports:
+      # Solo desde este equipo: de afuera se entra por ngrok, que corre aquí mismo y apunta a localhost:8000.
+      - "127.0.0.1:8000:8000"
+    environment:
+      APPRESSO_MONGO_URI: mongodb://mongo:27017
+      # Dentro de Docker ninguna petición llega desde 127.0.0.1: sin esto, cocina (atender/despachar/deshacer)
+      # y guardar en /entrenar quedan en solo lectura. El profesor evalúa la pasarela de pagos, que no lo necesita;
+      # actívelo solo si el equipo debe operar cocina desde otro dispositivo:
+      #   APPRESSO_ENTRENAMIENTO=1 docker compose up -d   (PowerShell: $env:APPRESSO_ENTRENAMIENTO="1")
+      APPRESSO_ENTRENAMIENTO: ${APPRESSO_ENTRENAMIENTO:-0}
+    volumes:
+      - datos:/data                                         # base SQLite (pedidos)
+      - logs:/app/logs                                      # logs/http.log
+      - privados:/app/appresso_food/datos_privados          # muestras que graba /entrenar
+      # El modelo de gestos entrenado NO va en un volumen: viene dentro de la imagen (del repo) y el kiosko lo usa sin entrenar.
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    # Sin puerto publicado: solo la app lo usa, y así no choca con un MongoDB instalado en Windows.
+    volumes:
+      - mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  datos:
+  logs:
+  privados:
+  mongo:

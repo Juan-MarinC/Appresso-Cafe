@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% set pagina = "privacidad" %}
+
+{% block titulo %}Privacidad - Appresso Food{% endblock %}
+
+{% block hero %}
+<section class="pagina-cabeza">
+  <div class="pagina-cabeza__fila">
+    <h1>Privacidad</h1>
+    <p>Qué hacemos con la cámara y con tus datos, según la Ley 1581 de 2012.</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block contenido %}
+<div class="privacidad">
+  <section class="panel">
+    <h2>En resumen</h2>
+    <ul class="privacidad__resumen">
+      <li><strong>No guardamos imágenes ni video.</strong> La cámara del kiosko se procesa solo en tu dispositivo y nada de lo que ve sale de él.</li>
+      <li><strong>No leemos tu cara.</strong> Solo se calculan los 21 puntos de la mano, en memoria, y se descartan en cada imagen.</li>
+      <li><strong>La cámara es opcional.</strong> Siempre puedes pedir tocando la pantalla.</li>
+      <li><strong>Sin publicidad ni rastreo.</strong> No usamos cookies de publicidad ni de analítica.</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="camara">
+    <h2>La cámara del kiosko (/gestos)</h2>
+    <p>Para entender tus gestos usamos <strong>ml5.js</strong>, que funciona dentro del navegador: el reconocimiento de la mano
+      y la red que interpreta el gesto vienen guardados en la app y corren en tu equipo, sin enviar la imagen a ningún servidor.</p>
+    <ul>
+      <li>La cámara solo se enciende cuando pulsas <strong>Activar cámara</strong>, y el navegador muestra que está en uso.</li>
+      <li>De cada imagen se obtienen los puntos de la mano; la imagen se descarta enseguida y los puntos también.</li>
+      <li>Al servidor solo llega tu <strong>pedido</strong>: los combos, las cantidades y el nombre si lo escribes.</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="entrenar">
+    <h2>Entrenamiento de la red (/entrenar, solo el equipo)</h2>
+    <p>El equipo del local puede grabar ejemplos para mejorar la red. Ahí sí se guardan <strong>los puntos de la mano</strong>
+      (números, nunca la imagen), y solo si quien entrena marca la casilla de autorización. Esos ejemplos quedan en una carpeta
+      privada del servidor que no se publica, y se borran con el botón <em>Borrar las muestras del servidor</em>.</p>
+  </section>
+
+  <section class="panel" id="datos">
+    <h2>Qué datos sí guardamos</h2>
+    <table>
+      <tr><th>Dónde</th><th>Qué se guarda</th><th>Para qué</th></tr>
+      <tr><td>Pedido</td><td>Nombre, productos, notas y, si es a domicilio, el barrio</td><td>Preparar y entregar el pedido, y el historial del cliente</td></tr>
+      <tr><td>Pasarela de pagos</td><td>Nombre, correo, cédula, valor y método de pago</td><td>Simular el pago y detectar fraude. <strong>Es un proyecto académico: no se cobra dinero real y no debes ingresar datos reales.</strong></td></tr>
+      <tr><td>Registro técnico (/logs)</td><td>Cada petición: ruta, hora, IP y respuesta. La clave de pago, los tokens y la cédula se guardan ocultos (***)</td><td>Revisar errores y el tráfico que llega a la app</td></tr>
+      <tr><td>Cookie <code>appresso_served_by</code></td><td>El nombre del cajero, solo si lo escribe al tomar un pedido (dura 30 días)</td><td>No tener que escribirlo en cada pedido</td></tr>
+      <tr><td>Tu navegador</td><td>Que ya viste este aviso</td><td>No mostrártelo en cada página</td></tr>
+    </table>
+  </section>
+
+  <section class="panel" id="derechos">
+    <h2>Tus derechos y la ley</h2>
+    <p>Aplicamos la <strong>Ley 1581 de 2012</strong> de protección de datos personales y el <strong>Decreto 1377 de 2013</strong>
+      (compilado en el Decreto 1074 de 2015). Los datos biométricos son sensibles (art. 5): por eso la cámara es opcional, no
+      guardamos imágenes y para entrenar pedimos autorización previa, expresa e informada (arts. 6 y 9).</p>
+    <p>Como titular puedes (art. 8):</p>
+    <ul>
+      <li><strong>Conocer</strong> qué datos tuyos tenemos, <strong>actualizarlos</strong> y <strong>rectificarlos</strong>.</li>
+      <li>Pedir que los <strong>borremos</strong> o <strong>revocar</strong> la autorización que diste.</li>
+      <li>Presentar quejas ante la <strong>Superintendencia de Industria y Comercio (SIC)</strong>.</li>
+    </ul>
+    <p>Para ejercerlos, pídelo al equipo del local.</p>
+    <p class="subtitle">Appresso Food es un proyecto académico de Programación Avanzada. Este aviso resume cómo funciona la app;
+      no es asesoría legal.</p>
+  </section>
+</div>
+{% endblock %}

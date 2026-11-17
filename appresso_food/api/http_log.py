@@ -86,10 +86,11 @@ def _origin(host: str, forwarded: bool) -> str:
     return "proxy" if forwarded else "local"
 
 
-# /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos.
-_SECRETOS = r"clave|token|pedido_token"
+# /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos;
+# la cédula tampoco, porque es un dato personal.
+_SECRETOS = r"clave|token|pedido_token|cedula|c[eé]dula"
 _SECRETO_FORM = re.compile(rf"\b({_SECRETOS})=[^&\s]*")
-_SECRETO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)"(?:[^"\\]|\\.)*"')
+_SECRETO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)(?:"(?:[^"\\]|\\.)*"|-?\d[\d.eE+-]*)')
 
 
 def _ocultar(text: str) -> str:
@@ -242,7 +243,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     request_id = _request_id(request)
     message = (f"Error inesperado del servidor al procesar {request.method} {request.url.path}: {type(exc).__name__}: {exc}. "
-               f"Quedó registrado con la traza en /logs" + (f" (id {request_id})." if request_id else "."))
+               f"Quedó registrado en /logs" + (f" (id {request_id})." if request_id else "."))
     return JSONResponse({"ok": False, "motivo": "ERROR_INTERNO", "mensaje": message, "detail": message, "request_id": request_id}, status_code=500)
 
 
@@ -263,10 +264,14 @@ def logs_page(request: Request):
 
 
 @router.get("/api/logs/http")
-def http_logs(desde: int = 0, limit: int = 200, automaticas: bool = False):
+def http_logs(request: Request, desde: int = 0, limit: int = 200, automaticas: bool = False):
     """Peticiones HTTP recientes, la más nueva primero. `desde` = último número recibido, para traer solo las nuevas."""
+    from appresso_food.api.gestos_api import token_para  # aquí: gestos_api se carga después que este módulo
+
     with _lock:
         entries = list(_requests) + (list(_polling) if automaticas else [])
         last = max((e["n"] for e in itertools.chain(_requests, _polling)), default=0)
     entries = sorted((e for e in entries if e["n"] > desde), key=lambda e: e["n"], reverse=True)[: max(1, min(limit, 1000))]
+    if not token_para(request):  # la traza muestra rutas y código internos: solo para el equipo del local (siguen en logs/http.log)
+        entries = [{**e, "traza": None} for e in entries]
     return {"ultimo": last, "peticiones": entries, "url_publica": _state["url_publica"], "archivo": _state["archivo"]}

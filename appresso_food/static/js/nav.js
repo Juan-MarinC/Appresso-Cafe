@@ -13,3 +13,18 @@
         if (equipo && !equipo.contains(e.target)) equipo.open = false;
     });
 })();
+
+// Aviso de privacidad (base.html): se muestra hasta que la persona pulsa "Entendido".
+(function () {
+    const aviso = document.getElementById("aviso-privacidad");
+    if (!aviso) return;
+    const CLAVE = "appresso-aviso-privacidad-v1";
+    let visto = false;
+    try { visto = localStorage.getItem(CLAVE) === "1"; } catch (e) { /* navegador sin almacenamiento: se muestra igual */ }
+    if (visto) return;
+    aviso.hidden = false;
+    document.getElementById("aviso-privacidad-ok").addEventListener("click", function () {
+        aviso.hidden = true;
+        try { localStorage.setItem(CLAVE, "1"); } catch (e) { /* sin almacenamiento: volverá a salir, no pasa nada */ }
+    });
+})();

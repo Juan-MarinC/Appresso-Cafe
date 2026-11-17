@@ -891,3 +891,20 @@ table tr:hover td { background: var(--crema-3); }
 .cajero { margin-bottom: 14px; }
 .cajero summary { color: var(--muted); font-weight: 600; cursor: pointer; }
 .cajero .field-group { margin-top: 8px; }
+
+/* Aviso de privacidad (primera visita) y página /privacidad */
+.aviso-privacidad {
+    position: fixed; left: 16px; bottom: 16px; z-index: 50; max-width: 420px;
+    display: grid; gap: 10px; padding: 14px 16px; border-radius: 14px;
+    background: var(--text); color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); font-size: 14px;
+}
+.aviso-privacidad[hidden] { display: none; }
+.aviso-privacidad p { margin: 0; }
+.aviso-privacidad div { display: flex; gap: 14px; align-items: center; justify-content: flex-end; }
+.aviso-privacidad a { color: #fff; font-weight: 700; }
+.aviso-privacidad button { border: 0; border-radius: 999px; padding: 8px 16px; background: #fff; color: var(--text); font-weight: 800; cursor: pointer; }
+.aviso-privacidad :focus-visible { outline-color: #fff; }
+@media (max-width: 520px) { .aviso-privacidad { left: 12px; right: 12px; bottom: 12px; max-width: none; } }
+body:has(.barra-pedido:not([hidden])) .aviso-privacidad { bottom: 84px; } /* no tapar la barra del pedido en el teléfono */
+.privacidad { display: grid; gap: 18px; }
+.privacidad__resumen li { margin-bottom: 6px; }

@@ -91,7 +91,7 @@ Para que el profesor entre desde su equipo hay que publicar el puerto 8000. Paso
 3. Arranque MongoDB y la app (ver "Cada vez que quiera usarla") y, en **otra** terminal:
 
    ```powershell
-   ngrok http 8000
+   ngrok http 127.0.0.1:8000
    ```
 
 4. ngrok muestra una línea `Forwarding https://xxxx.ngrok-free.app -> http://localhost:8000`.
@@ -109,6 +109,9 @@ Qué debe saber el profesor:
 - **Navegador:** con la cuenta gratis, ngrok muestra una página de advertencia antes de la app. Postman,
   curl, Python `requests` y similares no la ven; en el navegador se pulsa *Visit Site*, o se envía el
   encabezado `ngrok-skip-browser-warning: 1` en las llamadas hechas por código.
+- **Android:** si el link se abre dentro de WhatsApp (u otra app), esa página de aviso puede quedarse en blanco y la
+  visita ni siquiera llega a la app (en `/logs` no aparece). Abra el link en **Chrome** (menú ⋮ → *Abrir en Chrome*) y
+  pulse *Visit Site*. En iPhone abre bien. Solo se quita del todo con un plan de pago de ngrok o con otro túnel.
 - **La URL cambia** cada vez que se reinicia ngrok (salvo que reserve un dominio gratis en el panel de ngrok).
 - Si MongoDB está apagado al arrancar, las transacciones se guardan en memoria y la app avisa; si se cae con la app corriendo, responden `503` reintentable. En ambos casos se recupera sola cuando MongoDB vuelve, y productos, hash y totales siguen funcionando.
 
@@ -137,8 +140,18 @@ por código deben enviar el encabezado `ngrok-skip-browser-warning: 1` (CORS ya 
   de uvicorn (sin `--workers`). Al reiniciar se reconstruye desde MongoDB.
 - La página `/logs` guarda en memoria las últimas 1.000 peticiones (se vacía al reiniciar); lo que
   sigue disponible en `logs/http.log`. No registra `/static` ni `/api/logs/http`.
-- `DELETE /api/productos/{id}` borra de verdad un producto sin historial: quien tenga la URL pública
-  puede vaciar el menú. Úsela solo durante la prueba.
+- **Protecciones para la URL pública:**
+  - Los 10 productos del menú del local no se modifican ni se borran por la API (`403 MENU_PROTEGIDO`); para probar
+    PUT, PATCH y DELETE se crea un producto propio con POST, como hace `tests/prueba_profesor.py`. Tope: 100 productos.
+  - Límite por IP: 180 escrituras (POST/PUT/PATCH/DELETE) y 1.200 lecturas por minuto; al pasarlo responde
+    `429 DEMASIADAS_PETICIONES` con `Retry-After`. Este mismo equipo no tiene límite. Se ajusta con
+    `APPRESSO_LIMITE_ESCRITURAS` y `APPRESSO_LIMITE_LECTURAS`.
+  - `/logs` oculta la clave de pago, los tokens y la cédula (`***`), y las trazas de error solo se ven desde el
+    equipo del local (siempre quedan en `logs/http.log`).
+  - Lo que se envía a `/api/transactions` (nombre, correo, cédula) sí se ve en `/antifraude` y en la API: es el
+    laboratorio. **No use datos reales** mientras la app esté publicada.
+  - Con ngrok gratis, muchas conexiones seguidas desde una misma IP hacen que ngrok corte el TLS cerca de un minuto
+    (`SSL: UNEXPECTED_EOF`); se recupera solo. Si se corren las dos pruebas seguidas, espere un minuto entre una y otra.
 - Los pedidos de la app de comidas (`/`) y las transacciones antifraude son
   sistemas **separados**: un pedido no genera una transacción automáticamente.
 - No hay autenticación de usuarios. El hash garantiza integridad, no identidad.
@@ -151,6 +164,12 @@ por código deben enviar el encabezado `ngrok-skip-browser-warning: 1` (CORS ya 
 
 Pedir sin hablar, pensado para personas sordas o con dificultad para hablar. La cámara se procesa solo en el
 navegador con ml5.js (`ml5.handPose`): no se graba ni se envía ninguna imagen.
+
+- **Sin entrenar:** la red de gestos ya entrenada está en `static/modelos/gestos/` (8 KB) y el kiosko la carga al
+  abrirse; los clientes no entrenan nada. ml5.js y el modelo que encuentra la mano se descargan de internet (unpkg y
+  tfhub) para que el proyecto sea liviano, así que el kiosko necesita conexión.
+- **Privacidad:** `/privacidad` explica qué se hace con la cámara y con los datos (Ley 1581 de 2012), y cada página
+  muestra un aviso la primera vez que se entra (se recuerda en el navegador al pulsar "Entendido").
 
 | Ruta | Qué hace |
 |---|---|
@@ -303,6 +322,36 @@ Si MongoDB **se cae con la app corriendo**, las rutas de transacciones responden
 guarda (se puede reenviar) y al volver MongoDB todo sigue funcionando.
 Para que otro equipo de la misma red entre, use la IP de este equipo en lugar de `localhost`
 y permita el puerto 8000 en el firewall de Windows; desde otra red, use ngrok (ver más abajo).
+
+### Con Docker (app + MongoDB en contenedores)
+
+Requiere Docker Desktop abierto ("Engine running"). Desde la carpeta del proyecto:
+
+```powershell
+docker compose up -d --build      # construye y levanta la app y su MongoDB
+docker compose ps                 # ambos deben decir (healthy)
+docker compose logs -f app        # ver la consola de la app
+docker compose down               # detener (los datos se conservan)
+```
+
+- La app queda en `http://localhost:8000`. El puerto solo se publica en este equipo: desde afuera se entra
+  por ngrok (`ngrok http 127.0.0.1:8000`, ver "Probarlo desde afuera con ngrok"). Use `127.0.0.1` y no `localhost`:
+  en Windows `localhost` prueba primero IPv6, que el contenedor no escucha, y cada conexión tarda más.
+- MongoDB va en su propio contenedor y no publica el puerto 27017, así que no choca con un MongoDB instalado en Windows.
+- Los datos viven en volúmenes de Docker y sobreviven a `down`/`up` y a reconstruir la imagen: pedidos (SQLite en
+  `/data`), MongoDB, `logs/` y las muestras de `/entrenar`. `docker compose down -v` los **borra**.
+- **El modelo de gestos ya entrenado viene dentro de la imagen** (`static/modelos/gestos/`, guardado en el repo): el
+  kiosko `/gestos` lo carga solo y los clientes no tienen que entrenar nada. Para cambiarlo, se entrena en `/entrenar`
+  desde el equipo (sin Docker), se sube al repo y se reconstruye: `docker compose up -d --build`.
+- **Cocina y /entrenar en Docker:** dentro del contenedor ninguna petición llega desde `127.0.0.1`, así que atender,
+  despachar, deshacer y guardar modelos quedan en solo lectura. El profesor evalúa la **pasarela de pagos**
+  (`/api/transactions`, `/transacciones`, `/antifraude`), que no lo necesita. Si el equipo debe operar cocina desde otro
+  dispositivo, arranque con `APPRESSO_ENTRENAMIENTO=1` (cualquiera con la URL podrá usarla) y luego vuelva sin él:
+
+  ```powershell
+  $env:APPRESSO_ENTRENAMIENTO = "1"; docker compose up -d
+  Remove-Item Env:APPRESSO_ENTRENAMIENTO; docker compose up -d
+  ```
 
 ### Comprobar que todo funciona
 
