@@ -19,7 +19,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from appresso_food.nucleo import storage
+from appresso_food.nucleo import seed_data, storage
+from appresso_food.api.gestos_api import _directo_y_local
 from appresso_food.api.api_helpers import error_response, json_body, read_json_object, verify_hash
 from appresso_food.antifraude.fraud_config import FraudConfig
 from appresso_food.antifraude.fraud_validation import EMPTY_FIELD, INVALID_NAME, INVALID_TYPE, NULL_FIELD, FieldError, parse_value
@@ -134,6 +135,22 @@ def get_product(product_id: int):
     return _public(_get_or_404(product_id))
 
 
+# El menú del local no se cambia desde afuera: con la URL pública cualquiera podría poner precios en 0 o borrarlo.
+# Para practicar PUT, PATCH y DELETE se crea un producto propio con POST (así lo hace tests/prueba_profesor.py).
+MENU = {nombre.casefold() for nombre, _, _ in seed_data.PRODUCTS}
+MAX_PRODUCTOS = 100  # sin tope, alguien podría llenar el menú de la página de pedir con miles de productos
+
+
+def _menu_protegido(product: Product, request: Request) -> Optional[JSONResponse]:
+    if product.name.casefold() in MENU and not _directo_y_local(request):
+        return error_response(
+            403, "MENU_PROTEGIDO",
+            f"'{product.name}' es parte del menú del local y no se modifica por la API pública. "
+            "Para probar PUT, PATCH o DELETE cree su propio producto con POST /api/productos y use ese id.",
+        )
+    return None
+
+
 @router.post("/api/productos", status_code=201, openapi_extra=json_body({"nombre": "Monitor", "precio": 800000}))
 async def create_product(request: Request):
     """POST: crear un producto (nombre y precio obligatorios; categoria opcional)."""
@@ -146,6 +163,8 @@ async def create_product(request: Request):
     conflict = _name_taken(clean["nombre"])
     if conflict:
         return conflict
+    if len(storage.get_products()) >= MAX_PRODUCTOS:
+        return error_response(409, "LIMITE_PRODUCTOS", f"Ya hay {MAX_PRODUCTOS} productos: elimine alguno de los que creó antes de agregar otro.")
     try:
         product = storage.create_product(clean["nombre"], clean.get("categoria", DEFAULT_CATEGORY), clean["precio"])
     except sqlite3.IntegrityError:
@@ -158,6 +177,9 @@ async def create_product(request: Request):
 async def replace_product(product_id: int, request: Request):
     """PUT: reemplazar el producto completo (los campos que no envíe vuelven a su valor por defecto)."""
     before = _get_or_404(product_id, "PUT reemplaza un producto existente; para crear use POST /api/productos.")
+    blocked = _menu_protegido(before, request)
+    if blocked:
+        return blocked
     data, hash_check, error = await _read(request)
     if error:
         return error
@@ -177,6 +199,9 @@ async def replace_product(product_id: int, request: Request):
 async def patch_product(product_id: int, request: Request):
     """PATCH: actualizar solo los campos enviados."""
     before = _get_or_404(product_id)
+    blocked = _menu_protegido(before, request)
+    if blocked:
+        return blocked
     data, hash_check, error = await _read(request)
     if error:
         return error
@@ -198,9 +223,12 @@ async def patch_product(product_id: int, request: Request):
 
 
 @router.delete("/api/productos/{product_id}")
-def delete_product(product_id: int):
+def delete_product(product_id: int, request: Request):
     """DELETE: eliminar un producto que no tenga pedidos en el historial."""
     product = _get_or_404(product_id)
+    blocked = _menu_protegido(product, request)
+    if blocked:
+        return blocked
     orders, units = storage.product_usage(product_id)
     if orders:
         return error_response(

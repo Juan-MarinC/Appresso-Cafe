@@ -12,6 +12,7 @@ filtrando por neighborhoods.name.
 """
 
 import json
+import os
 import sqlite3
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -21,7 +22,8 @@ from appresso_food.nucleo import seed_data
 from appresso_food.nucleo.graph import RESTAURANT_NODE
 from appresso_food.nucleo.models import Ingredient, Order, OrderItem, Product
 
-DB_PATH = Path(__file__).resolve().parent.parent / "appresso_food.db"
+# En Docker la base va en un volumen (APPRESSO_DB_PATH=/data/...) para no perder los pedidos al recrear el contenedor.
+DB_PATH = Path(os.getenv("APPRESSO_DB_PATH") or Path(__file__).resolve().parent.parent / "appresso_food.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS products (

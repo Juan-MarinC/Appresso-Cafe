@@ -29,7 +29,7 @@
                 <p>La imagen se procesa solo en este equipo. Se guardan únicamente los 21 puntos de la mano, nunca la foto ni la cara.</p>
                 <label class="consentimiento">
                     <input type="checkbox" id="consentimiento">
-                    <span>Autorizo que Appresso Food guarde los puntos de mi mano (no la imagen) para entrenar la red de gestos. Es opcional y puedo pedir que se borren cuando quiera. <a href="/gestos/ml5#ley">Más información</a></span>
+                    <span>Autorizo que Appresso Food guarde los puntos de mi mano (no la imagen) para entrenar la red de gestos. Es opcional y puedo pedir que se borren cuando quiera. <a href="/privacidad#entrenar">Más información</a></span>
                 </label>
                 <button type="button" class="primary-btn" id="activar" disabled>Activar cámara</button>
             </div>
@@ -78,6 +78,6 @@
 
 {% block scripts %}
 <script src="/static/js/gestos-reglas.js"></script>
-<script src="/static/js/camara-mano.js"></script>
+<script src="/static/js/camara-mano.js?v=3"></script>
 <script src="/static/js/entrenar.js"></script>
 {% endblock %}

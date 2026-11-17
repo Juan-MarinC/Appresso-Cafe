@@ -1,0 +1,19 @@
+# Fuera de la imagen: datos personales, bases locales, logs y lo que no hace falta para correr la app.
+.git
+.claude
+.env
+venv
+.venv
+**/__pycache__
+**/*.pyc
+logs
+server.log
+**/*.db
+**/*.db-journal
+appresso_food/datos_privados
+appresso_food/static/modelos/gestos/muestras.json
+operation_counts.csv
+tests
+docs
+Dockerfile
+docker-compose.yml

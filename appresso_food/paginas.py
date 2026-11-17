@@ -117,6 +117,12 @@ async def train_page(request: Request):
 ENTRADAS_RED, OCULTAS_RED = 42, 16
 
 
+@router.get("/privacidad")
+async def privacy_page(request: Request):
+    """Qué se hace con la cámara y con los datos (Ley 1581 de 2012)."""
+    return templates.TemplateResponse("privacidad.html", {"request": request})
+
+
 @router.get("/gestos/ml5")
 async def ml5_page(request: Request):
     """Submódulo de exposición: cómo usa el kiosko ml5.js, sus límites, privacidad y la ley, con un laboratorio en vivo."""

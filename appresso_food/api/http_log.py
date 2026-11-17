@@ -16,13 +16,14 @@ import logging
 import threading
 import time
 import traceback
+import unicodedata
 import uuid
 from collections import deque
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlsplit
+from urllib.parse import unquote_plus, urlsplit
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -86,21 +87,75 @@ def _origin(host: str, forwarded: bool) -> str:
     return "proxy" if forwarded else "local"
 
 
-# /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos.
-_SECRETOS = r"clave|token|pedido_token"
-_SECRETO_FORM = re.compile(rf"\b({_SECRETOS})=[^&\s]*")
-_SECRETO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)"(?:[^"\\]|\\.)*"')
+# /logs es público (también por ngrok): la clave de pago y los tokens no se guardan, o cualquiera podría usarlos;
+# la cédula tampoco, porque es un dato personal. Se compara el nombre del campo sin mayúsculas, tildes ni signos
+# ("Cédula", "pedido-token" y "c%C3%A9dula" cuentan igual).
+_SENSIBLES = {"clave", "token", "pedidotoken", "cedula"}
+# Respaldo para lo que no se puede leer como JSON o formulario (un cuerpo cortado, multipart): por nombre, sin
+# importar mayúsculas, y aunque el valor quede sin cerrar por el corte.
+_SECRETOS = r"clave|token|pedido_token|c[eé]dula"
+_SECRETO_TEXTO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)(?:"(?:[^"\\]|\\.)*(?:"|$)|-?\d[\d.eE+-]*)', re.I)
+_SECRETO_MULTIPART = re.compile(rf'(name="(?:{_SECRETOS})"\r?\n\r?\n)[^\r\n]*', re.I)
+_SECRETO_PAR = re.compile(r'(?<![\w-])(clave|token|pedido[_-]?token|c[eé]dula)=[^&\s"]*', re.I)
+
+
+def _sensible(nombre) -> bool:
+    sin_tildes = unicodedata.normalize("NFKD", str(nombre)).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]", "", sin_tildes.lower()) in _SENSIBLES
+
+
+def _ocultar_datos(dato):
+    """Reemplaza los campos sensibles a cualquier profundidad de un JSON ya leído (y dentro de sus textos)."""
+    if isinstance(dato, dict):
+        return {k: "***" if _sensible(k) else _ocultar_datos(v) for k, v in dato.items()}
+    if isinstance(dato, list):
+        return [_ocultar_datos(v) for v in dato]
+    if isinstance(dato, str):
+        return _ocultar_texto(dato)  # un texto puede traer otro JSON o una URL con ?clave=...
+    return dato
+
+
+def _ocultar_form(text: str) -> str:
+    """Formulario o query (a=1&b=2): oculta el valor de los campos sensibles sin tocar cómo venía escrito el resto."""
+    partes = []
+    for parte in text.split("&"):
+        nombre, igual, _ = parte.partition("=")
+        partes.append(f"{nombre}=***" if igual and _sensible(unquote_plus(nombre)) else parte)
+    return "&".join(partes)
+
+
+def _ocultar_texto(text: str) -> str:
+    """Lo que no es JSON: formulario o query línea por línea, y respaldo por texto para el resto."""
+    text = "\n".join(_ocultar_form(linea) for linea in text.split("\n"))
+    text = _SECRETO_PAR.sub(r"\1=***", text)
+    text = _SECRETO_TEXTO_JSON.sub(r'"\1"\2"***"', text)
+    return _SECRETO_MULTIPART.sub(r"\1***", text)
 
 
 def _ocultar(text: str) -> str:
-    text = _SECRETO_FORM.sub(r"\1=***", text)
-    return _SECRETO_JSON.sub(r'"\1"\2"***"', text)
+    try:
+        text = json.dumps(_ocultar_datos(json.loads(text)), ensure_ascii=False)
+    except Exception:  # no es JSON, o viene anidado a propósito para romper el lector (RecursionError)
+        text = _ocultar_texto(text)
+    # Un JSON puede traer un carácter inválido ("\ud800"); guardado tal cual, /api/logs/http no podría responder.
+    return text.encode("utf-8", "replace").decode("utf-8")
+
+
+def _decodificar(raw: bytes) -> str:
+    """UTF-8; si el corte partió una letra, sin esos últimos bytes; si no es UTF-8 (algunas terminales de Windows
+    mandan Latin-1), como cp1252. Con errors="replace", "Cédula" quedaba "C�dula" y ya no se reconocía para ocultarla."""
+    for fin in range(len(raw), max(len(raw) - 4, -1), -1):
+        try:
+            return raw[:fin].decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("cp1252", errors="replace")
 
 
 def _text(raw: bytes) -> Optional[str]:
     if not raw:
         return None
-    text = _ocultar(raw.decode("utf-8", errors="replace"))
+    text = _ocultar(_decodificar(raw))
     return text + " …(recortado)" if len(raw) >= MAX_BODY_CHARS else text
 
 
@@ -208,7 +263,10 @@ class HttpLogMiddleware:
             error, trace = exc, traceback.format_exc()
             raise
         finally:
-            _record(scope, request_id, started, response["status"] or 500, bytes(request_body), bytes(response_body), error, trace)
+            try:
+                _record(scope, request_id, started, response["status"] or 500, bytes(request_body), bytes(response_body), error, trace)
+            except Exception:  # registrar nunca debe cambiar la respuesta ni tumbar la petición
+                logging.getLogger(__name__).exception("No se pudo registrar la petición %s", request_id)
 
 
 # ---------------------------------------------------------------- errores explicados
@@ -242,7 +300,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     request_id = _request_id(request)
     message = (f"Error inesperado del servidor al procesar {request.method} {request.url.path}: {type(exc).__name__}: {exc}. "
-               f"Quedó registrado con la traza en /logs" + (f" (id {request_id})." if request_id else "."))
+               f"Quedó registrado en /logs" + (f" (id {request_id})." if request_id else "."))
     return JSONResponse({"ok": False, "motivo": "ERROR_INTERNO", "mensaje": message, "detail": message, "request_id": request_id}, status_code=500)
 
 
@@ -263,10 +321,14 @@ def logs_page(request: Request):
 
 
 @router.get("/api/logs/http")
-def http_logs(desde: int = 0, limit: int = 200, automaticas: bool = False):
+def http_logs(request: Request, desde: int = 0, limit: int = 200, automaticas: bool = False):
     """Peticiones HTTP recientes, la más nueva primero. `desde` = último número recibido, para traer solo las nuevas."""
+    from appresso_food.api.gestos_api import token_para  # aquí: gestos_api se carga después que este módulo
+
     with _lock:
         entries = list(_requests) + (list(_polling) if automaticas else [])
         last = max((e["n"] for e in itertools.chain(_requests, _polling)), default=0)
     entries = sorted((e for e in entries if e["n"] > desde), key=lambda e: e["n"], reverse=True)[: max(1, min(limit, 1000))]
+    if not token_para(request):  # la traza muestra rutas y código internos: solo para el equipo del local (siguen en logs/http.log)
+        entries = [{**e, "traza": None} for e in entries]
     return {"ultimo": last, "peticiones": entries, "url_publica": _state["url_publica"], "archivo": _state["archivo"]}
