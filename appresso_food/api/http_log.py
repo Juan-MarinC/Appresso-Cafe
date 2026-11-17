@@ -96,6 +96,7 @@ _SENSIBLES = {"clave", "token", "pedidotoken", "cedula"}
 _SECRETOS = r"clave|token|pedido_token|c[eé]dula"
 _SECRETO_TEXTO_JSON = re.compile(rf'"({_SECRETOS})"(\s*:\s*)(?:"(?:[^"\\]|\\.)*(?:"|$)|-?\d[\d.eE+-]*)', re.I)
 _SECRETO_MULTIPART = re.compile(rf'(name="(?:{_SECRETOS})"\r?\n\r?\n)[^\r\n]*', re.I)
+_SECRETO_PAR = re.compile(r'(?<![\w-])(clave|token|pedido[_-]?token|c[eé]dula)=[^&\s"]*', re.I)
 
 
 def _sensible(nombre) -> bool:
@@ -104,11 +105,13 @@ def _sensible(nombre) -> bool:
 
 
 def _ocultar_datos(dato):
-    """Reemplaza los campos sensibles a cualquier profundidad de un JSON ya leído."""
+    """Reemplaza los campos sensibles a cualquier profundidad de un JSON ya leído (y dentro de sus textos)."""
     if isinstance(dato, dict):
         return {k: "***" if _sensible(k) else _ocultar_datos(v) for k, v in dato.items()}
     if isinstance(dato, list):
         return [_ocultar_datos(v) for v in dato]
+    if isinstance(dato, str):
+        return _ocultar_texto(dato)  # un texto puede traer otro JSON o una URL con ?clave=...
     return dato
 
 
@@ -121,15 +124,21 @@ def _ocultar_form(text: str) -> str:
     return "&".join(partes)
 
 
-def _ocultar(text: str) -> str:
-    try:
-        return json.dumps(_ocultar_datos(json.loads(text)), ensure_ascii=False)
-    except ValueError:
-        pass
-    if "\n" not in text:
-        text = _ocultar_form(text)
+def _ocultar_texto(text: str) -> str:
+    """Lo que no es JSON: formulario o query línea por línea, y respaldo por texto para el resto."""
+    text = "\n".join(_ocultar_form(linea) for linea in text.split("\n"))
+    text = _SECRETO_PAR.sub(r"\1=***", text)
     text = _SECRETO_TEXTO_JSON.sub(r'"\1"\2"***"', text)
     return _SECRETO_MULTIPART.sub(r"\1***", text)
+
+
+def _ocultar(text: str) -> str:
+    try:
+        text = json.dumps(_ocultar_datos(json.loads(text)), ensure_ascii=False)
+    except Exception:  # no es JSON, o viene anidado a propósito para romper el lector (RecursionError)
+        text = _ocultar_texto(text)
+    # Un JSON puede traer un carácter inválido ("\ud800"); guardado tal cual, /api/logs/http no podría responder.
+    return text.encode("utf-8", "replace").decode("utf-8")
 
 
 def _decodificar(raw: bytes) -> str:
@@ -254,7 +263,10 @@ class HttpLogMiddleware:
             error, trace = exc, traceback.format_exc()
             raise
         finally:
-            _record(scope, request_id, started, response["status"] or 500, bytes(request_body), bytes(response_body), error, trace)
+            try:
+                _record(scope, request_id, started, response["status"] or 500, bytes(request_body), bytes(response_body), error, trace)
+            except Exception:  # registrar nunca debe cambiar la respuesta ni tumbar la petición
+                logging.getLogger(__name__).exception("No se pudo registrar la petición %s", request_id)
 
 
 # ---------------------------------------------------------------- errores explicados

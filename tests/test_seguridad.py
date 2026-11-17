@@ -1,6 +1,8 @@
 """Pruebas de las protecciones para la URL pública: menú protegido, límite de peticiones y /logs sin datos sensibles."""
 
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from fastapi import FastAPI
@@ -85,6 +87,24 @@ class LogsSinDatosSensiblesTest(unittest.TestCase):
         cuerpo = '{"Cédula": "1098765432"}'.encode("latin-1")
         self.assertNotIn("1098765432", http_log._text(cuerpo))
         self.assertEqual(http_log._decodificar("añ".encode("utf-8")[:-1]), "a")  # letra partida por el corte
+
+    def test_dentro_de_textos_y_en_varias_lineas_tambien(self):
+        self.assertEqual(http_log._ocultar("hola\nclave=abc\ntoken=xyz"), "hola\nclave=***\ntoken=***")
+        self.assertEqual(http_log._ocultar('{"volver": "/pagar?pedido=3&clave=abc"}'), '{"volver": "/pagar?pedido=3&clave=***"}')
+        self.assertNotIn("1012345678", http_log._ocultar('{"payload_original": "{\\"cedula\\": \\"1012345678\\"}"}'))
+
+    def test_un_json_malicioso_no_rompe_ni_esquiva_el_registro(self):
+        app = FastAPI()
+        app.post("/eco")(lambda: {"ok": True})
+        http_log.install(app, Path(tempfile.mkdtemp()) / "http.log")
+        c = TestClient(app)
+        envenenado, profundo = '{"nombre": "\\ud800"}', "[" * 3000 + "]" * 3000
+        for cuerpo in (envenenado, profundo):
+            self.assertEqual(c.post("/eco", content=cuerpo, headers={"Content-Type": "application/json"}).status_code, 200)
+        r = c.get("/api/logs/http?limit=10")
+        self.assertEqual(r.status_code, 200)  # antes el carácter inválido dejaba esta ruta respondiendo 500
+        rutas = [e["ruta"] for e in r.json()["peticiones"]]
+        self.assertEqual(rutas.count("/eco"), 2)  # las dos quedaron registradas, también la anidada
 
     def test_la_traza_no_se_entrega_por_la_url_publica(self):
         entrada = {"n": 999999, "traza": "Traceback (most recent call last): ...", "id": "x"}
